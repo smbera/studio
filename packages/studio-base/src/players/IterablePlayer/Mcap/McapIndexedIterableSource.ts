@@ -6,7 +6,7 @@ import { Mcap0IndexedReader, Mcap0Types } from "@mcap/core";
 
 import Logger from "@foxglove/log";
 import { ParsedChannel, parseChannel } from "@foxglove/mcap-support";
-import { Time, fromNanoSec, toNanoSec, compare } from "@foxglove/rostime";
+import { Time, fromNanoSec, toDate, toNanoSec, compare } from "@foxglove/rostime";
 import { MessageEvent } from "@foxglove/studio";
 import {
   GetBackfillMessagesArgs,
@@ -205,5 +205,26 @@ export class McapIndexedIterableSource implements IIterableSource {
     }
     messages.sort((a, b) => compare(a.receiveTime, b.receiveTime));
     return messages;
+  }
+
+  public async fetchAsset(
+    input: RequestInfo | URL,
+    init?: RequestInit | undefined,
+  ): Promise<Response> {
+    const url =
+      (input as Partial<Request>).url ?? (typeof input === "string" ? input : input.toString());
+    const attachment: Mcap0Types.Attachment | undefined = this.reader.getAttachment(url);
+    if (attachment) {
+      const lastModified = toDate(fromNanoSec(attachment.createTime));
+      return new Response(attachment.data, {
+        status: 200,
+        headers: new Headers({
+          "Content-Type": attachment.contentType,
+          "Content-Length": attachment.data.byteLength.toString(),
+          "Last-Modified": lastModified.toUTCString(),
+        }),
+      });
+    }
+    return await fetch(input, init);
   }
 }

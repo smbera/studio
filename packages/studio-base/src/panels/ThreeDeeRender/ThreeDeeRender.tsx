@@ -394,14 +394,16 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
   const [renderer, setRenderer] = useState<Renderer | undefined>(undefined);
   const rendererRef = useRef<Renderer | undefined>(undefined);
   useEffect(() => {
-    const newRenderer = canvas ? new Renderer(canvas, configRef.current) : undefined;
+    const newRenderer = canvas
+      ? new Renderer(canvas, context.fetchAsset, configRef.current)
+      : undefined;
     setRenderer(newRenderer);
     rendererRef.current = newRenderer;
     return () => {
       rendererRef.current?.dispose();
       rendererRef.current = undefined;
     };
-  }, [canvas, configRef, config.scene.transforms?.enablePreloading]);
+  }, [canvas, configRef, context.fetchAsset, config.scene.transforms?.enablePreloading]);
 
   const [colorScheme, setColorScheme] = useState<"dark" | "light" | undefined>();
   const [topics, setTopics] = useState<ReadonlyArray<Topic> | undefined>();

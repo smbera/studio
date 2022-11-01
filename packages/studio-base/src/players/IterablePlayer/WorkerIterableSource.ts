@@ -121,6 +121,14 @@ export class WorkerIterableSource implements IIterableSource {
     return cursor;
   }
 
+  public async fetchAsset(
+    input: RequestInfo | URL,
+    init?: RequestInit | undefined,
+  ): Promise<Response> {
+    const fetchAsset = this._worker?.fetchAsset ?? global.fetch;
+    return await fetchAsset(input, init);
+  }
+
   public async terminate(): Promise<void> {
     this._thread?.terminate();
   }

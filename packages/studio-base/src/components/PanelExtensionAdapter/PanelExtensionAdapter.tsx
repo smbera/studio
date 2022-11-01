@@ -416,6 +416,10 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
         setSubscriptions(panelId, []);
       },
 
+      fetchAsset: async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+        return await getMessagePipelineContext().fetchAsset(input, init);
+      },
+
       subscribeAppSettings: (settings: string[]) => {
         if (!isMounted()) {
           return;

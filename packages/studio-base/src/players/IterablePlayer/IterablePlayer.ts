@@ -327,6 +327,14 @@ export class IterablePlayer implements Player {
     throw new Error("Service calls are not supported by this data source");
   }
 
+  public async fetchAsset(
+    input: RequestInfo | URL,
+    init?: RequestInit | undefined,
+  ): Promise<Response> {
+    const fetchAsset = this._iterableSource.fetchAsset ?? global.fetch;
+    return await fetchAsset(input, init);
+  }
+
   public close(): void {
     this._setState("close");
   }

@@ -20,6 +20,7 @@ export type MeshUpAxis = "y_up" | "z_up";
 export const DEFAULT_MESH_UP_AXIS: MeshUpAxis = "y_up";
 
 export type ModelCacheOptions = {
+  fetchAsset: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   edgeMaterial: THREE.Material;
   ignoreColladaUpAxis: boolean;
   meshUpAxis: MeshUpAxis;
@@ -45,9 +46,11 @@ export class ModelCache {
   private _textDecoder = new TextDecoder();
   private _models = new Map<string, Promise<LoadedModel | undefined>>();
   private _edgeMaterial: THREE.Material;
+  private _fetchAsset: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
   public constructor(public readonly options: ModelCacheOptions) {
     this._edgeMaterial = options.edgeMaterial;
+    this._fetchAsset = options.fetchAsset;
   }
 
   public async load(
@@ -78,7 +81,7 @@ export class ModelCache {
   ): Promise<LoadedModel> {
     const GLB_MAGIC = 0x676c5446; // "glTF"
 
-    const response = await fetch(url);
+    const response = await this._fetchAsset(url);
     if (!response.ok) {
       const errMsg = response.statusText;
       throw new Error(`Error ${response.status}${errMsg ? ` (${errMsg})` : ``}`);

@@ -103,6 +103,8 @@ export type RendererEvents = {
 
 export type FollowMode = "follow-pose" | "follow-position" | "follow-none";
 
+export type FetchMethod = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
 export type RendererConfig = {
   /** Camera settings for the currently rendering scene */
   cameraState: CameraState;
@@ -286,6 +288,8 @@ export class Renderer extends EventEmitter<RendererEvents> {
   public readonly outlineMaterial = new THREE.LineBasicMaterial({ dithering: true });
   public readonly instancedOutlineMaterial = new InstancedLineMaterial({ dithering: true });
 
+  public fetchAsset: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
   private coreSettings: CoreSettings;
   public measurementTool: MeasurementTool;
   public publishClickTool: PublishClickTool;
@@ -326,7 +330,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
   private _isUpdatingCameraState = false;
   private _animationFrame?: number;
 
-  public constructor(canvas: HTMLCanvasElement, config: RendererConfig) {
+  public constructor(canvas: HTMLCanvasElement, fetchAsset: FetchMethod, config: RendererConfig) {
     super();
 
     // NOTE: Global side effect
@@ -334,6 +338,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
 
     this.canvas = canvas;
     this.config = config;
+    this.fetchAsset = fetchAsset;
 
     this.settings = new SettingsManager(baseSettingsTree());
     this.settings.on("update", () => this.emit("settingsTreeChange", this));
@@ -369,6 +374,8 @@ export class Renderer extends EventEmitter<RendererEvents> {
     }
 
     this.modelCache = new ModelCache({
+      // eslint-disable-next-line @typescript-eslint/promise-function-async
+      fetchAsset: (input: RequestInfo | URL, init?: RequestInit) => this.fetchAsset(input, init),
       ignoreColladaUpAxis: config.scene.ignoreColladaUpAxis ?? false,
       meshUpAxis: config.scene.meshUpAxis ?? DEFAULT_MESH_UP_AXIS,
       edgeMaterial: this.outlineMaterial,

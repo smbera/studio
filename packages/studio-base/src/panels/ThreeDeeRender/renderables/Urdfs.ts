@@ -451,7 +451,8 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
 
     log.debug(`Fetching URDF from ${url}`);
     renderable.userData.fetching = { url, control: new AbortController() };
-    fetch(url, { signal: renderable.userData.fetching.control.signal })
+    this.renderer
+      .fetchAsset(url, { signal: renderable.userData.fetching.control.signal })
       // eslint-disable-next-line @typescript-eslint/promise-function-async
       .then((res) => res.text())
       .then((urdf) => {
@@ -523,7 +524,7 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
 
     // Parse the URDF
     const loadedRenderable = renderable;
-    parseUrdf(urdf)
+    this._parseUrdf(urdf)
       .then((parsed) => this._loadRobot(loadedRenderable, parsed))
       .catch((unknown) => {
         const err = unknown as Error;
@@ -534,6 +535,45 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
           `Failed to parse URDF: ${err.message}`,
         );
       });
+  }
+
+  private async _parseUrdf(text: string): Promise<ParsedUrdf> {
+    const fileFetcher = this._getFileFetch();
+
+    try {
+      log.debug(`Parsing ${text.length} byte URDF`);
+      const robot = await parseRobot(text, fileFetcher);
+
+      const frames = Array.from(robot.links.values(), (link) => link.name);
+      const transforms = Array.from(robot.joints.values(), (joint) => {
+        const translation = joint.origin.xyz;
+        const rotation = eulerToQuaternion(joint.origin.rpy);
+        const transform: TransformData = {
+          parent: joint.parent,
+          child: joint.child,
+          translation,
+          rotation,
+          joint,
+        };
+        return transform;
+      });
+
+      return { robot, frames, transforms };
+    } catch (err) {
+      throw new Error(`Failed to parse ${text.length} byte URDF: ${err}`);
+    }
+  }
+
+  private _getFileFetch(): (url: string) => Promise<string> {
+    return async (url: string) => {
+      try {
+        log.debug(`fetchAsset(${url}) requested`);
+        const res = await this.renderer.fetchAsset(url);
+        return await res.text();
+      } catch (err) {
+        throw new Error(`Failed to fetch "${url}": ${err}`);
+      }
+    };
   }
 
   private _loadRobot(renderable: UrdfRenderable, { robot, frames, transforms }: ParsedUrdf): void {
@@ -591,45 +631,6 @@ export class Urdfs extends SceneExtension<UrdfRenderable> {
       this.renderer.addTransform(parent, child, 0n, translation, rotation, settingsPath);
     }
   }
-}
-
-async function parseUrdf(text: string): Promise<ParsedUrdf> {
-  const fileFetcher = getFileFetch();
-
-  try {
-    log.debug(`Parsing ${text.length} byte URDF`);
-    const robot = await parseRobot(text, fileFetcher);
-
-    const frames = Array.from(robot.links.values(), (link) => link.name);
-    const transforms = Array.from(robot.joints.values(), (joint) => {
-      const translation = joint.origin.xyz;
-      const rotation = eulerToQuaternion(joint.origin.rpy);
-      const transform: TransformData = {
-        parent: joint.parent,
-        child: joint.child,
-        translation,
-        rotation,
-        joint,
-      };
-      return transform;
-    });
-
-    return { robot, frames, transforms };
-  } catch (err) {
-    throw new Error(`Failed to parse ${text.length} byte URDF: ${err}`);
-  }
-}
-
-function getFileFetch(): (url: string) => Promise<string> {
-  return async (url: string) => {
-    try {
-      log.debug(`fetch(${url}) requested`);
-      const res = await fetch(url);
-      return await res.text();
-    } catch (err) {
-      throw new Error(`Failed to fetch "${url}": ${err}`);
-    }
-  };
 }
 
 function createRenderable(
