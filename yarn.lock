@@ -2507,7 +2507,6 @@ __metadata:
     ttypescript: 1.5.13
     typescript: 4.8.2
     typescript-transform-paths: 3.3.1
-    urdf-loader: 0.10.4
     url-search-params: 1.1.0
     use-debounce: 8.0.4
     use-immer: 0.7.0
@@ -23619,15 +23618,6 @@ __metadata:
     semver-diff: ^3.1.1
     xdg-basedir: ^4.0.0
   checksum: 461e5e5b002419296d3868ee2abe0f9ab3e1846d9db642936d0c46f838872ec56069eddfe662c45ce1af0a8d6d5026353728de2e0a95ab2e3546a22ea077caf1
-  languageName: node
-  linkType: hard
-
-"urdf-loader@npm:0.10.4":
-  version: 0.10.4
-  resolution: "urdf-loader@npm:0.10.4"
-  peerDependencies:
-    three: ">=0.105.0"
-  checksum: 87dacb31d7aa1e1a641a5ca2c9aa77f557406a885bb16c4d827a4e3f1f1a29047a3e69ff9d2777bce9848bd1f0034727e9b992ebebc4cc44857f8be105380e88
   languageName: node
   linkType: hard
 

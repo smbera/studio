@@ -39,8 +39,6 @@ import ThreeDeeRenderHelp from "./ThreeDeeRender/index.help.md";
 import threeDeeRenderThumbnail from "./ThreeDeeRender/thumbnail.png";
 import TopicGraphHelp from "./TopicGraph/index.help.md";
 import topicGraphThumbnail from "./TopicGraph/thumbnail.png";
-import URDFViewerHelp from "./URDFViewer/index.help.md";
-import URDFViewerThumbnail from "./URDFViewer/thumbnail.png";
 import VariableSliderHelp from "./VariableSlider/index.help.md";
 import variableSliderThumbnail from "./VariableSlider/thumbnail.png";
 import DiagnosticStatusPanelHelp from "./diagnostics/DiagnosticStatusPanel.help.md";
@@ -169,14 +167,6 @@ const builtin: PanelInfo[] = [
     help: TableHelp,
     thumbnail: tableThumbnail,
     module: async () => await import("./Table"),
-  },
-  {
-    title: "URDF Viewer",
-    type: "URDFViewer",
-    description: "Visualize Unified Robot Description Format files.",
-    help: URDFViewerHelp,
-    thumbnail: URDFViewerThumbnail,
-    module: async () => await import("./URDFViewer"),
   },
   {
     title: "Topic Graph",

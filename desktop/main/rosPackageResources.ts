@@ -160,11 +160,9 @@ export function registerRosPackageProtocolHandlers(): void {
     }
   });
 
-  // The URDFAssetLoader does not support .tiff files (because chrome does not support .tiff files
-  // in <img> tags). As a workaround, the loader modifies `package://` urls ending in `.tiff?` to
-  // x-foxglove-converted-tiff.
-  //
-  // This handler converts the .tiff file into a PNG file which is supported in <img> tags
+  // Browsers do not support decoding .tiff files. As a workaround, we expose a
+  // `x-foxglove-converted-tiff` protocol that shares the same structure as
+  // package:// URLs but rewrites .tiff data to .png format
   protocol.registerBufferProtocol("x-foxglove-converted-tiff", async (request, callback) => {
     try {
       // Give preference to the ROS_PACKAGE_PATH app setting over the environment variable
