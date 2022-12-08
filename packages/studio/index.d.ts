@@ -362,6 +362,11 @@ declare module "@foxglove/studio" {
      * the representation of the panel settings in the editor.
      */
     updatePanelSettingsEditor(settings: Readonly<SettingsTree>): void;
+
+    /**
+     * Updates the panel's toolbar.
+     */
+    EXPERIMENTAL_updatePanelToolbar(settings: Readonly<ToolbarConfig>): void;
   };
 
   export type ExtensionPanelRegistration = {
@@ -704,5 +709,83 @@ declare module "@foxglove/studio" {
      * editor UI.
      */
     nodes: SettingsTreeNodes;
+  };
+
+  /**
+   * A settings tree field specifies the input type and the value of a field
+   * in the settings editor.
+   */
+  export type ToolbarItemControl =
+    | {
+        input: "button";
+        /**
+         * Icon to display on the button.
+         */
+        icon: SettingsIcon;
+      }
+    | { input: "messagepath"; value?: string; validTypes?: string[] }
+    | { input: "autocomplete"; value?: string; items: string[] }
+    | { input: "boolean"; value?: boolean }
+    | {
+        input: "select";
+        value?: string | string[];
+        options: Array<{ label: string; value: undefined | string }>;
+      }
+    | {
+        input: "string";
+        value?: string;
+
+        /**
+         * Optional placeholder text displayed in the field input when value is undefined
+         */
+        placeholder?: string;
+      };
+
+  export type ToolbarItem = ToolbarItemControl & {
+    /**
+     * Unique key identifying the item in the actionHandler.
+     */
+    key: string;
+
+    /**
+     * True if the item is disabled.
+     */
+    disabled?: boolean;
+
+    /**
+     * Optional help text to explain the purpose of the item.
+     */
+    help?: string;
+  };
+
+  /**
+   * Represents actions that can be dispatched to source of the SettingsTree to implement
+   * edits and updates.
+   */
+  export type ToolbarAction =
+    | {
+        action: "update";
+        payload: DistributivePick<ToolbarItem, "key" | "value">;
+      }
+    | {
+        action: "perform-control-action";
+        payload: { key: string };
+      };
+
+  export type ToolbarConfig = {
+    /**
+     * Optional override of panel title
+     */
+    title?: string;
+
+    /**
+     * Controls to display in the toolbar
+     */
+    items?: ToolbarItem[];
+
+    /**
+     * Handler to process all actions on the toolbar initiated by the UI.
+     */
+    actionHandler: (action: ToolbarAction) => void;
   };
 }

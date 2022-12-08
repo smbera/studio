@@ -2,7 +2,7 @@
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
-import { useTheme } from "@mui/material";
+import { Typography, useTheme } from "@mui/material";
 import { CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { v4 as uuid } from "uuid";
@@ -18,6 +18,7 @@ import {
   RenderState,
   SettingsTree,
   Subscription,
+  ToolbarConfig,
   VariableValue,
 } from "@foxglove/studio";
 import {
@@ -27,6 +28,7 @@ import {
 } from "@foxglove/studio-base/components/MessagePipeline";
 import { usePanelContext } from "@foxglove/studio-base/components/PanelContext";
 import PanelToolbar from "@foxglove/studio-base/components/PanelToolbar";
+import usePanelToolbar from "@foxglove/studio-base/components/PanelToolbar/usePanelToolbar";
 import { useAppConfiguration } from "@foxglove/studio-base/context/AppConfigurationContext";
 import {
   ExtensionCatalog,
@@ -263,6 +265,7 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
   ]);
 
   const updatePanelSettingsTree = usePanelSettingsTreeUpdate();
+  const [panelTitle, panelToolbarItems, updatePanelToolbar] = usePanelToolbar();
 
   type PartialPanelExtensionContext = Omit<PanelExtensionContext, "panelElement">;
   const partialExtensionContext = useMemo<PartialPanelExtensionContext>(() => {
@@ -452,6 +455,13 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
         }
         updatePanelSettingsTree(settings);
       },
+
+      EXPERIMENTAL_updatePanelToolbar: (toolbarConfig: ToolbarConfig) => {
+        if (!isMounted()) {
+          return;
+        }
+        updatePanelToolbar(toolbarConfig);
+      },
     };
   }, [
     capabilities,
@@ -469,6 +479,7 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
     setSharedPanelState,
     setSubscriptions,
     updatePanelSettingsTree,
+    updatePanelToolbar,
   ]);
 
   const panelContainerRef = useRef<HTMLDivElement>(ReactNull);
@@ -546,7 +557,13 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
         ...style,
       }}
     >
-      <PanelToolbar helpContent={props.help} />
+      <PanelToolbar additionalIcons={panelToolbarItems} helpContent={props.help}>
+        {panelTitle && (
+          <Typography noWrap variant="body2" color="text.secondary" flex="auto">
+            {panelTitle}
+          </Typography>
+        )}
+      </PanelToolbar>
       <div style={{ flex: 1, overflow: "hidden" }} ref={panelContainerRef} />
     </div>
   );
