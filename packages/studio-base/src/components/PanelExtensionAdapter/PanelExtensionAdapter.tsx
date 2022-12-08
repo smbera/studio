@@ -558,11 +558,11 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
       }}
     >
       <PanelToolbar additionalIcons={panelToolbarItems} helpContent={props.help}>
-        {panelTitle && (
+        {panelTitle ? (
           <Typography noWrap variant="body2" color="text.secondary" flex="auto">
             {panelTitle}
           </Typography>
-        )}
+        ) : undefined}
       </PanelToolbar>
       <div style={{ flex: 1, overflow: "hidden" }} ref={panelContainerRef} />
     </div>
