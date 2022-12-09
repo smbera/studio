@@ -765,7 +765,7 @@ declare module "@foxglove/studio" {
   export type ToolbarAction =
     | {
         action: "update";
-        payload: DistributivePick<ToolbarItem, "key" | "value">;
+        payload: DistributivePick<ToolbarItem, "input" | "key" | "value">;
       }
     | {
         action: "perform-control-action";

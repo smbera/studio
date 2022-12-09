@@ -62,7 +62,7 @@ const useStyles = makeStyles<void, "error">()((theme, _params, classes) => {
       alignItems: "center",
       textAlign: "end",
     },
-    pseudoInputWrapper: {
+    messagePathWrapper: {
       padding: theme.spacing(0.75, 1),
       borderRadius: theme.shape.borderRadius,
       fontSize: "0.75em",
@@ -283,7 +283,7 @@ function FieldInput({
       );
     case "messagepath":
       return (
-        <Stack className={classes.pseudoInputWrapper} direction="row">
+        <Stack className={classes.messagePathWrapper} direction="row">
           <MessagePathInput
             path={field.value ?? ""}
             disabled={field.disabled}
