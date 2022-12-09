@@ -3,7 +3,8 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 import { flatten } from "lodash";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { createStore } from "zustand";
 
 import { AVLTree } from "@foxglove/avl";
 import { useShallowMemo } from "@foxglove/hooks";
@@ -14,30 +15,33 @@ import {
   toNanoSec,
   fromNanoSec,
 } from "@foxglove/rostime";
-import { MessageEvent } from "@foxglove/studio";
+import { MessageEvent, RenderState } from "@foxglove/studio";
 import { useMessageReducer } from "@foxglove/studio-base/PanelAPI";
 
 import { normalizeAnnotations } from "../lib/normalizeAnnotations";
 import { normalizeImageMessage } from "../lib/normalizeMessage";
 import { Annotation, NormalizedImageMessage } from "../types";
-import { useDatatypesByTopic } from "./useDatatypesByTopic";
 
 export type ImagePanelMessages = {
+  imageTopic?: string;
   image?: NormalizedImageMessage;
-  annotations?: Annotation[];
+  annotationsByTopic: Map<string, Annotation[]>;
+  tree: AVLTree<Time, SynchronizationItem>;
+  synchronize: boolean;
+
+  public: {
+    image?: NormalizedImageMessage;
+    annotations?: Annotation[];
+    frame(currentFrame: NonNullable<RenderState["currentFrame"]>): void;
+    clear(): void;
+    setSynchronize(synchronize: boolean): void;
+    setImageTopic(newTopic: string): void;
+  };
 };
 
 export type SynchronizationItem = {
   image?: NormalizedImageMessage;
   annotationsByTopic: Map<string, Annotation[]>;
-};
-
-type ReducerState = {
-  imageTopic?: string;
-  image?: NormalizedImageMessage;
-  annotationsByTopic: Map<string, Annotation[]>;
-
-  tree: AVLTree<Time, SynchronizationItem>;
 };
 
 export const ANNOTATION_DATATYPES = [
@@ -184,8 +188,6 @@ function useImagePanelMessages(options?: Options): ImagePanelMessages {
 
   const shallowTopics = useShallowMemo(topics);
 
-  const datatypesByTopic = useDatatypesByTopic();
-
   const restore = useCallback(
     (state?: ReducerState) => {
       // When changing image topics, clear the image and any annotations
@@ -203,21 +205,18 @@ function useImagePanelMessages(options?: Options): ImagePanelMessages {
   const addMessage = useCallback(
     (state: ReducerState, event: MessageEvent<unknown>): ReducerState => {
       // A datatype is required to normalize the message
-      const datatype = datatypesByTopic.get(event.topic);
-      if (!datatype) {
-        return state;
-      }
+      const schemaName = event.schemaName;
 
       if (synchronize && annotationTopics) {
         return synchronizedAddMessage(state, {
           annotationTopics,
-          datatype,
+          datatype: schemaName,
           event,
         });
       }
 
-      const normalizedImage = normalizeImageMessage(event.message, datatype);
-      const normalizedAnnotations = normalizeAnnotations(event.message, datatype);
+      const normalizedImage = normalizeImageMessage(event.message, schemaName);
+      const normalizedAnnotations = normalizeAnnotations(event.message, schemaName);
 
       if (!normalizedImage && !normalizedAnnotations) {
         return state;
@@ -237,7 +236,7 @@ function useImagePanelMessages(options?: Options): ImagePanelMessages {
         tree: state.tree,
       };
     },
-    [annotationTopics, datatypesByTopic, synchronize],
+    [annotationTopics, synchronize],
   );
 
   const { image, annotationsByTopic } = useMessageReducer({
@@ -246,13 +245,51 @@ function useImagePanelMessages(options?: Options): ImagePanelMessages {
     addMessage,
   });
 
-  return useMemo(() => {
-    const annotations = flatten(Array.from(annotationsByTopic.values()));
-    return {
-      image,
-      annotations,
-    };
-  }, [annotationsByTopic, image]);
+  const [store] = useState(() =>
+    createStore<ImagePanelMessages>((set, get) => ({
+      annotationsByTopic: new Map(),
+      tree: new AVLTree<Time, SynchronizationItem>(compareTime),
+
+      public: {
+        image,
+        annotations,
+        setImageTopic(imageTopic) {
+          // When changing image topics, clear the image and any annotations
+          set({
+            annotationsByTopic: new Map(),
+            tree: new AVLTree<Time, SynchronizationItem>(compareTime),
+          });
+          if (imageTopic !== get().imageTopic) {
+            return;
+          }
+        },
+        setSynchronize(synchronize) {
+          set({
+            synchronize,
+          });
+        },
+        clear() {
+          set((old) => ({
+            annotationsByTopic: new Map(),
+            tree: new AVLTree<Time, SynchronizationItem>(compareTime),
+            public: {
+              ...old.public,
+              image: undefined,
+              annotations: undefined,
+            },
+          }));
+        },
+        frame(currentFrame) {
+          for (const messageEvent of currentFrame) {
+            set((old) => ({ ...addMessage(old, messageEvent) }));
+          }
+        },
+      },
+    })),
+  );
+
+  return store;
+  const annotations = flatten(Array.from(annotationsByTopic.values()));
 }
 
 export { useImagePanelMessages };
