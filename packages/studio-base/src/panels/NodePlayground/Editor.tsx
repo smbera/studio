@@ -12,9 +12,11 @@
 //   You may not use this file except in compliance with the License.
 
 import { useTheme } from "@mui/material";
+// @ts-expect-error ICodeEditorService does not have type information in the monaco-editor package
+import { ICodeEditorService } from "monaco-editor/esm/vs/editor/browser/services/codeEditorService";
 import * as monacoApi from "monaco-editor/esm/vs/editor/editor.api";
-// @ts-expect-error StaticServices does not have type information in the monaco-editor package
-import { StaticServices } from "monaco-editor/esm/vs/editor/standalone/browser/standaloneServices";
+// @ts-expect-error StandaloneServices does not have type information in the monaco-editor package
+import { StandaloneServices } from "monaco-editor/esm/vs/editor/standalone/browser/standaloneServices";
 import * as path from "path";
 import { ReactElement, useCallback, useRef } from "react";
 import MonacoEditor, { EditorDidMount, EditorWillMount } from "react-monaco-editor";
@@ -29,7 +31,7 @@ import { mightActuallyBePartial } from "@foxglove/studio-base/util/mightActually
 
 import { themes } from "./theme";
 
-const codeEditorService = StaticServices.codeEditorService.get();
+const codeEditorService = StandaloneServices.get(ICodeEditorService);
 
 type CodeEditor = monacoApi.editor.IStandaloneCodeEditor;
 
