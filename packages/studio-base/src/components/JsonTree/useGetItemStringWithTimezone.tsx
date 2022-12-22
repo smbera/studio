@@ -12,11 +12,13 @@
 //   You may not use this file except in compliance with the License.
 
 import { ReactNode, useCallback } from "react";
+import tinycolor from "tinycolor2";
 
 import { AppSetting } from "@foxglove/studio-base/AppSetting";
 import { isTypicalFilterName } from "@foxglove/studio-base/components/MessagePathSyntax/isTypicalFilterName";
 import { useAppConfigurationValue } from "@foxglove/studio-base/hooks/useAppConfigurationValue";
 import { format, formatDuration } from "@foxglove/studio-base/util/formatTime";
+import { quatToEuler } from "@foxglove/studio-base/util/quatToEuler";
 
 const DURATION_20_YEARS_SEC = 20 * 365 * 24 * 60 * 60;
 
@@ -82,9 +84,7 @@ function getItemString(
         </span>
       );
     }
-  }
-
-  if (keys.length === 3) {
+  } else if (keys.length === 3) {
     const { x, y, z } = data as { x?: unknown; y?: unknown; z?: unknown };
     if (typeof x === "number" && typeof y === "number" && typeof z === "number") {
       const length = Math.sqrt(x * x + y * y + z * z);
@@ -93,6 +93,32 @@ function getItemString(
           norm = {length.toFixed(2)} {z === 0 ? getArrow(x, y) : undefined}
         </span>
       );
+    }
+  } else if (keys.length === 4) {
+    const { x, y, z, w } = data as { x?: unknown; y?: unknown; z?: unknown; w?: unknown };
+    if (
+      typeof x === "number" &&
+      typeof y === "number" &&
+      typeof z === "number" &&
+      typeof w === "number"
+    ) {
+      const [roll, pitch, yaw] = quatToEuler(x, y, z, w);
+      return (
+        <span>
+          rpy = [{round(roll)}, {round(pitch)}, {round(yaw)}]
+        </span>
+      );
+    }
+
+    const { r, g, b, a } = data as { r?: unknown; g?: unknown; b?: unknown; a?: unknown };
+    if (
+      typeof r === "number" &&
+      typeof g === "number" &&
+      typeof b === "number" &&
+      typeof a === "number"
+    ) {
+      // print the color as hex
+      return <span>{tinycolor({ r: r * 255, g: g * 255, b: b * 255, a }).toHex8String()}</span>;
     }
   }
 
@@ -106,4 +132,8 @@ function getItemString(
       {itemType} {filterKeys.length > 0 ? filterKeys : itemString}
     </span>
   );
+}
+
+function round(x: number, precision = 2): number {
+  return Number(x.toFixed(precision));
 }

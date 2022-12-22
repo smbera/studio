@@ -14,12 +14,14 @@
 import { first, omit } from "lodash";
 import { ReactNode } from "react";
 import Tree from "react-json-tree";
+import tinycolor from "tinycolor2";
 
 import { isTypicalFilterName } from "@foxglove/studio-base/components/MessagePathSyntax/isTypicalFilterName";
 import Stack from "@foxglove/studio-base/components/Stack";
 import { RosValue } from "@foxglove/studio-base/players/types";
 import { format, formatDuration } from "@foxglove/studio-base/util/formatTime";
 import { useJsonTreeTheme } from "@foxglove/studio-base/util/globalConstants";
+import { quatToEuler } from "@foxglove/studio-base/util/quatToEuler";
 
 import { InteractionData } from "./types";
 
@@ -133,9 +135,7 @@ function getItemString(
         </span>
       );
     }
-  }
-
-  if (keys.length === 3) {
+  } else if (keys.length === 3) {
     const { x, y, z } = data as { x?: unknown; y?: unknown; z?: unknown };
     if (typeof x === "number" && typeof y === "number" && typeof z === "number") {
       const length = Math.sqrt(x * x + y * y + z * z);
@@ -144,6 +144,32 @@ function getItemString(
           norm = {length.toFixed(2)} {z === 0 ? getArrow(x, y) : undefined}
         </span>
       );
+    }
+  } else if (keys.length === 4) {
+    const { x, y, z, w } = data as { x?: unknown; y?: unknown; z?: unknown; w?: unknown };
+    if (
+      typeof x === "number" &&
+      typeof y === "number" &&
+      typeof z === "number" &&
+      typeof w === "number"
+    ) {
+      const [roll, pitch, yaw] = quatToEuler(x, y, z, w);
+      return (
+        <span>
+          rpy = [{round(roll)}, {round(pitch)}, {round(yaw)}]
+        </span>
+      );
+    }
+
+    const { r, g, b, a } = data as { r?: unknown; g?: unknown; b?: unknown; a?: unknown };
+    if (
+      typeof r === "number" &&
+      typeof g === "number" &&
+      typeof b === "number" &&
+      typeof a === "number"
+    ) {
+      // print the color as hex
+      return <span>{tinycolor({ r: r * 255, g: g * 255, b: b * 255, a }).toHex8String()}</span>;
     }
   }
 
@@ -157,6 +183,10 @@ function getItemString(
       {itemType} {filterKeys.length > 0 ? filterKeys : itemString}
     </span>
   );
+}
+
+function round(x: number, precision = 2): number {
+  return Number(x.toFixed(precision));
 }
 
 export default ObjectDetails;
