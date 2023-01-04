@@ -38,7 +38,7 @@ class Ros2SocketDataSourceFactory implements IDataSourceFactory {
     const connectionEnabled = appConfig.get(AppSetting.ENABLE_ROS2_NATIVE_DATA_SOURCE) as
       | boolean
       | undefined;
-    return connectionEnabled === false;
+    return !(connectionEnabled ?? false);
   }
 
   public initialize(args: DataSourceFactoryInitializeArgs): Player | undefined {
