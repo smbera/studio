@@ -4,6 +4,7 @@
 
 import { createContext, useContext } from "react";
 
+import { IAppConfiguration } from "@foxglove/studio-base/context/AppConfigurationContext";
 import { LayoutData } from "@foxglove/studio-base/context/CurrentLayoutContext/actions";
 import { Player, PlayerMetricsCollectorInterface } from "@foxglove/studio-base/players/types";
 import ConsoleApi from "@foxglove/studio-base/services/ConsoleApi";
@@ -49,7 +50,7 @@ export interface IDataSourceFactory {
   docsLinks?: { label?: string; url: string }[];
   disabledReason?: string | JSX.Element;
   badgeText?: string;
-  hidden?: boolean;
+  hidden?: boolean | ((appConfig: IAppConfiguration) => boolean);
   warning?: string;
 
   sampleLayout?: LayoutData;

@@ -2,6 +2,8 @@
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
+import { AppSetting } from "@foxglove/studio-base/AppSetting";
+import { IAppConfiguration } from "@foxglove/studio-base/context/AppConfigurationContext";
 import {
   IDataSourceFactory,
   DataSourceFactoryInitializeArgs,
@@ -31,6 +33,13 @@ class Ros2SocketDataSourceFactory implements IDataSourceFactory {
       },
     ],
   };
+
+  public hidden(appConfig: IAppConfiguration): boolean {
+    const connectionEnabled = appConfig.get(AppSetting.ENABLE_ROS2_NATIVE_DATA_SOURCE) as
+      | boolean
+      | undefined;
+    return connectionEnabled === false;
+  }
 
   public initialize(args: DataSourceFactoryInitializeArgs): Player | undefined {
     const domainIdStr = args.params?.domainId;

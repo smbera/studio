@@ -60,6 +60,11 @@ const features: Feature[] = [
     name: "Plot panel series in settings",
     description: <>Allow editing plot panel data series in the sidebar.</>,
   },
+  {
+    key: AppSetting.ENABLE_ROS2_NATIVE_DATA_SOURCE,
+    name: "ROS 2 native connection",
+    description: <>Enable the deprecated ROS 2 native live connection.</>,
+  },
 ];
 if (process.env.NODE_ENV === "development") {
   features.push({

@@ -11,6 +11,7 @@ import { makeStyles } from "tss-react/mui";
 import Snow from "@foxglove/studio-base/components/OpenDialog/Snow";
 import Stack from "@foxglove/studio-base/components/Stack";
 import { useAnalytics } from "@foxglove/studio-base/context/AnalyticsContext";
+import { useAppConfiguration } from "@foxglove/studio-base/context/AppConfigurationContext";
 import {
   IDataSourceFactory,
   usePlayerSelection,
@@ -45,6 +46,7 @@ export default function OpenDialog(props: OpenDialogProps): JSX.Element {
   const { activeView: defaultActiveView, onDismiss, activeDataSource, backdropAnimation } = props;
   const { classes } = useStyles();
   const { availableSources, selectSource } = usePlayerSelection();
+  const appConfiguration = useAppConfiguration();
 
   const isMounted = useMountedState();
   const [activeView, setActiveView] = useState<OpenDialogViews>(defaultActiveView ?? "start");
@@ -104,9 +106,11 @@ export default function OpenDialog(props: OpenDialogProps): JSX.Element {
   // connectionSources is the list of availableSources supporting "connections"
   const connectionSources = useMemo(() => {
     return availableSources.filter((source) => {
-      return source.type === "connection" && source.hidden !== true;
+      const hidden =
+        typeof source.hidden === "function" ? source.hidden(appConfiguration) : source.hidden;
+      return source.type === "connection" && hidden !== true;
     });
-  }, [availableSources]);
+  }, [availableSources, appConfiguration]);
 
   const localFileSources = useMemo(() => {
     return availableSources.filter((source) => source.type === "file");
