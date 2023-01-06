@@ -21,7 +21,7 @@ import { DeepPartial } from "ts-essentials";
 import { useDebouncedCallback } from "use-debounce";
 
 import Logger from "@foxglove/log";
-import { Time, toNanoSec } from "@foxglove/rostime";
+import { Time, compare, isLessThan, toNanoSec } from "@foxglove/rostime";
 import {
   LayoutActions,
   MessageEvent,
@@ -417,6 +417,12 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
   const [currentTime, setCurrentTime] = useState<Time | undefined>();
   const [didSeek, setDidSeek] = useState<boolean>(false);
   const [sharedPanelState, setSharedPanelState] = useState<undefined | Shared3DPanelState>();
+  const allFramesRef = useRef<readonly MessageEvent<unknown>[] | undefined>(undefined);
+  const [allFramesLength, setAllFramesLength] = useState(0);
+  const [allFramesCursor, setAllFramesCursor] = useState({
+    index: 0,
+    currentTimeReached: currentTime,
+  });
 
   const renderRef = useRef({ needsRender: false });
   const [renderDone, setRenderDone] = useState<(() => void) | undefined>();
@@ -587,6 +593,13 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
         // currentFrame has messages on subscribed topics since the last render call
         deepParseMessageEvents(renderState.currentFrame);
         setMessages(renderState.currentFrame);
+
+        // allFrames has messages on preloaded topics across all frames (as they are loaded)
+        deepParseMessageEvents(renderState.allFrames);
+        if (allFramesRef.current?.length !== renderState.allFrames?.length) {
+          setAllFramesLength(renderState.allFrames?.length ?? 0);
+        }
+        allFramesRef.current = renderState.allFrames;
       });
     };
 
@@ -644,6 +657,49 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
     setTopicsToSubscribe((prev) => (isEqual(prev, newSubscriptions) ? prev : newSubscriptions));
   }, [topics, config.topics, schemaHandlers, topicHandlers]);
 
+  // Handle preloaded messages and render a frame if new messages are available
+  useEffect(() => {
+    if (
+      !renderer ||
+      !currentTime ||
+      !allFramesRef.current ||
+      allFramesRef.current.length === allFramesCursor.index
+    ) {
+      return;
+    }
+
+    let currentTimeReached = allFramesCursor.currentTimeReached;
+    // we do not want to read more messages if we are equal to or past the currentTime
+    if (currentTimeReached && compare(currentTimeReached, currentTime) >= 0) {
+      return;
+    }
+
+    /**
+     * This assumes that the allFrames is sorted by receiveTime and that no messages before the current time are after
+     * the first message past the current time. It also assumes that allFrames is only additive to the end.
+     * Not sure if this is an assumption we can always make. We might need to store a separate incrementally processed allFrames structure.
+     */
+    let cursor = allFramesCursor.index;
+    // load preloaded messages up to current time
+    while (cursor < allFramesLength) {
+      const message = allFramesRef.current[cursor]!;
+      // read messages until we reach the current time
+      if (isLessThan(currentTime, message.receiveTime)) {
+        currentTimeReached = currentTime;
+        break;
+      }
+
+      renderer.addMessageEvent(message);
+      cursor++;
+      if (cursor === allFramesRef.current.length) {
+        currentTimeReached = message.receiveTime;
+      }
+    }
+
+    setAllFramesCursor({ index: cursor, currentTimeReached });
+    renderRef.current.needsRender = true;
+  }, [allFramesCursor, renderer, currentTime, allFramesLength]);
+
   // Notify the extension context when our subscription list changes
   useEffect(() => {
     if (!topicsToSubscribe) {
@@ -678,6 +734,7 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
   // Flush the renderer's state when the seek count changes
   useEffect(() => {
     if (renderer && didSeek) {
+      setAllFramesCursor({ index: 0, currentTimeReached: undefined });
       renderer.clear();
       setDidSeek(false);
     }
