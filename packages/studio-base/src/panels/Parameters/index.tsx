@@ -20,7 +20,7 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
-import { isObject, union } from "lodash";
+import { isEqual, isObject, union } from "lodash";
 import { ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 import { useDebouncedCallback } from "use-debounce";
@@ -128,7 +128,7 @@ function Parameters(): ReactElement {
       (name: string, value: ParameterValue) => setParameterUnbounced(name, value),
       [setParameterUnbounced],
     ),
-    200,
+    500,
   );
 
   const [changedParameters, setChangedParameters] = useState<string[]>([]);
@@ -157,7 +157,7 @@ function Parameters(): ReactElement {
       Array.from(previousParametersRef.current?.keys() ?? []),
     ).filter((name) => {
       const previousValue = previousParametersRef.current?.get(name);
-      return previousValue !== parameters.get(name);
+      return !isEqual(previousValue, parameters.get(name));
     });
 
     setChangedParameters(newChangedParameters);
@@ -196,7 +196,7 @@ function Parameters(): ReactElement {
                 <TableRow
                   hover
                   className={classes.tableRow}
-                  key={`parameter-${name}`}
+                  key={`parameter-${name}-${displayValue}`}
                   selected={!skipAnimation.current && changedParameters.includes(name)}
                 >
                   <TableCell variant="head">
