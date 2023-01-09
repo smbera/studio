@@ -21,6 +21,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
 } from "@mui/material";
 import { isEqual, isObject, union } from "lodash";
@@ -134,12 +135,16 @@ function SubmittableJsonInput(props: {
         }}
       />
       {!isEqual(value, props.value) && [
-        <IconButton key="submit" onClick={() => props.onSubmit(value)}>
-          <CheckIcon />
-        </IconButton>,
-        <IconButton key="reset" onClick={() => setValue(editableValue(props.value))}>
-          <ClearIcon />
-        </IconButton>,
+        <Tooltip key="submit" title="Submit change">
+          <IconButton onClick={() => props.onSubmit(value)}>
+            <CheckIcon />
+          </IconButton>
+        </Tooltip>,
+        <Tooltip key="reset" title="Reset">
+          <IconButton key="reset" onClick={() => setValue(editableValue(props.value))}>
+            <ClearIcon />
+          </IconButton>
+        </Tooltip>,
       ]}
     </Stack>
   );
