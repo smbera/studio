@@ -11,7 +11,10 @@
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
 
+import CheckIcon from "@mui/icons-material/Check";
+import ClearIcon from "@mui/icons-material/Clear";
 import {
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -116,6 +119,32 @@ function displayableValue(value: unknown): string {
   }
 }
 
+function SubmittableJsonInput(props: {
+  value: unknown;
+  onSubmit: (newVal: unknown) => void;
+}): ReactElement {
+  const [value, setValue] = useState<unknown>(editableValue(props.value));
+
+  return (
+    <Stack direction="row">
+      <JsonInput
+        value={value}
+        onChange={(newVal) => {
+          setValue(newVal);
+        }}
+      />
+      {!isEqual(value, props.value) && [
+        <IconButton key="submit" onClick={() => props.onSubmit(value)}>
+          <CheckIcon />
+        </IconButton>,
+        <IconButton key="reset" onClick={() => setValue(editableValue(props.value))}>
+          <ClearIcon />
+        </IconButton>,
+      ]}
+    </Stack>
+  );
+}
+
 function Parameters(): ReactElement {
   const { classes } = useStyles();
 
@@ -190,7 +219,6 @@ function Parameters(): ReactElement {
           <TableBody>
             {parameterNames.map((name) => {
               const displayValue = displayableValue(parameters.get(name));
-              const editValue = editableValue(parameters.get(name));
 
               return (
                 <TableRow
@@ -207,10 +235,9 @@ function Parameters(): ReactElement {
 
                   {canSetParams ? (
                     <TableCell padding="none">
-                      <JsonInput
-                        dataTestId={`parameter-value-input-${displayValue}`}
-                        value={editValue}
-                        onChange={(newVal) => {
+                      <SubmittableJsonInput
+                        value={parameters.get(name)}
+                        onSubmit={(newVal) => {
                           setParameter(name, newVal as ParameterValue);
                         }}
                       />
