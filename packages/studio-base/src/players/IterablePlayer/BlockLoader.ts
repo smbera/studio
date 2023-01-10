@@ -167,12 +167,8 @@ export class BlockLoader {
       return;
     }
 
-    // Load the active block to end first, then go back and load first block to active block
-    await this.loadBlockRange(this.activeBlockId, this.blocks.length, args.progress);
-
-    if (this.activeBlockId > 0) {
-      await this.loadBlockRange(0, this.activeBlockId, args.progress);
-    }
+    // TODO: figure out if I should change eviction behavior as well
+    await this.loadBlockRange(0, this.blocks.length, args.progress);
   }
 
   /// ---- private

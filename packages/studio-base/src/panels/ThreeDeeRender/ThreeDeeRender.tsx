@@ -596,8 +596,18 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
 
         // allFrames has messages on preloaded topics across all frames (as they are loaded)
         deepParseMessageEvents(renderState.allFrames);
-        if (allFramesRef.current?.length !== renderState.allFrames?.length) {
-          setAllFramesLength(renderState.allFrames?.length ?? 0);
+        // Not sure if this same assumption can be made if cache eviction happens and the allFrames are the same size with different data
+        // might have to look at the beginning and end messages in that case?
+        if (
+          renderState.allFrames != undefined &&
+          allFramesRef.current?.length !== renderState.allFrames.length
+        ) {
+          setAllFramesLength(renderState.allFrames.length);
+          if (renderState.allFrames.length === 0 && allFramesRef.current?.length !== 0) {
+            // reset transform tree and cursor when preloaded messages are cleared so that it reads only from currentframe
+            setAllFramesCursor({ index: 0, currentTimeReached: { sec: 0, nsec: 0 } });
+            renderer?.clear();
+          }
         }
         allFramesRef.current = renderState.allFrames;
       });
@@ -678,6 +688,10 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
      * This assumes that the allFrames is sorted by receiveTime and that no messages before the current time are after
      * the first message past the current time. It also assumes that allFrames is only additive to the end.
      * Not sure if this is an assumption we can always make. We might need to store a separate incrementally processed allFrames structure.
+     * allFrames will not be stable with the addition/subtraction of new preloaded topics from the 3D pane.
+     * This is solved by resetting the cursor and clearing the renderer when allFrames is cleared. This means we cannot partially add or remove preloaded topic
+     * subscriptions they need to all be removed or added at once.
+     * Alternatively we could reset the allFramesCursor when a preloaded topic is added or removed, but this would mean recalculating all tf's again whenever this happens.
      */
     let cursor = allFramesCursor.index;
     // load preloaded messages up to current time

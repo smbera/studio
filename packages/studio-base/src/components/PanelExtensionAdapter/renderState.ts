@@ -278,12 +278,24 @@ function initRenderStateBuilder(): BuildRenderStateFn {
       if (newBlocks && prevBlocks !== newBlocks) {
         shouldRender = true;
         const frames: MessageEvent<unknown>[] = (renderState.allFrames = []);
+        // would be nice if we didn't have to recompute allFrames from the blocks if the blocks were changed from a preloaded topic not related to this panel
+        const topicsToPreloadForPanel = new Set<string>();
+        for (const sub of subscriptions) {
+          if (sub.preload === true) {
+            topicsToPreloadForPanel.add(sub.topic);
+          }
+        }
         for (const block of newBlocks) {
           if (!block) {
             continue;
           }
 
-          for (const messageEvents of Object.values(block.messagesByTopic)) {
+          for (const [topic, messageEvents] of Object.entries(block.messagesByTopic)) {
+            // skip adding topics to allFrames that are not set to preload for this panel
+            if (!topicsToPreloadForPanel.has(topic)) {
+              continue;
+            }
+
             for (const messageEvent of messageEvents) {
               // Message blocks may contain topics that we are not subscribed to so we need to filter those out.
               // We use the topicNoConversions and topicConversions to determine if we should include the message event

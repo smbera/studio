@@ -381,7 +381,20 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
           };
         });
 
-        setLocalSubscriptions(subscribePayloads);
+        // TODO: possibly combine SubscribePayload and Subscription types
+        // renderstate was showing SubscribePayloads instead of Subscription types which is wrong
+        // not sure why these are two different types -- we should and can consolidate
+        const localSubs = topics.map<Subscription>((item) => {
+          if (typeof item === "string") {
+            // For backwards compatability with the topic-string-array api `subscribe(["/topic"])`
+            // results in a topic subscription with full preloading
+            return { topic: item, preload: true };
+          }
+
+          return item;
+        });
+
+        setLocalSubscriptions(localSubs);
         setSubscriptions(panelId, subscribePayloads);
       },
 
