@@ -35,7 +35,6 @@ import ConsoleApiRemoteLayoutStorageProvider from "./providers/ConsoleApiRemoteL
 import CurrentLayoutProvider from "./providers/CurrentLayoutProvider";
 import ExtensionCatalogProvider from "./providers/ExtensionCatalogProvider";
 import ExtensionMarketplaceProvider from "./providers/ExtensionMarketplaceProvider";
-import HelpInfoProvider from "./providers/HelpInfoProvider";
 import LayoutManagerProvider from "./providers/LayoutManagerProvider";
 import PanelCatalogProvider from "./providers/PanelCatalogProvider";
 import UserProfileLocalStorageProvider from "./providers/UserProfileLocalStorageProvider";
@@ -58,6 +57,7 @@ type AppProps = {
   enableDialogAuth?: boolean;
   enableLaunchPreferenceScreen?: boolean;
   enableGlobalCss?: boolean;
+  appBarLeftInset?: number;
 };
 
 // Suppress context menu for the entire app except on inputs & textareas.
@@ -105,7 +105,6 @@ export function App(props: AppProps): JSX.Element {
     <AnalyticsProvider amplitudeApiKey={process.env.AMPLITUDE_API_KEY} />,
     <LayoutManagerProvider />,
     <AssetsProvider loaders={assetLoaders} />,
-    <HelpInfoProvider />,
     <TimelineInteractionStateProvider />,
     <UserNodeStateProvider />,
     <CurrentLayoutProvider />,
@@ -144,7 +143,11 @@ export function App(props: AppProps): JSX.Element {
                 <DndProvider backend={HTML5Backend}>
                   <Suspense fallback={<></>}>
                     <PanelCatalogProvider>
-                      <Workspace deepLinks={deepLinks} disableSignin={disableSignin} />
+                      <Workspace
+                        deepLinks={deepLinks}
+                        disableSignin={disableSignin}
+                        appBarLeftInset={props.appBarLeftInset}
+                      />
                     </PanelCatalogProvider>
                   </Suspense>
                 </DndProvider>
