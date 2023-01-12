@@ -692,15 +692,17 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
     }
 
     /**
-     * Assumptions about allFrames:
+     * Assumptions about allFrames needed by allFramesCursor:
      *  - always sorted by receiveTime
-     *  - preloaded topics/schemas are only ever all removed or all added at once, otherwise it is not stable
-     *  - messages are only ever subtracted from the beginning or added to the end (requires preloading from beginning to currentTime)
-     * Not sure if this is an assumption we can always make. We might need to store a separate incrementally processed allFrames structure.
-     * allFrames will not be stable with the addition/subtraction of new preloaded topics from the 3D pane.
-     * This is solved by resetting the cursor and clearing the renderer when allFrames is cleared. This means we cannot partially add or remove preloaded topic
-     * subscriptions they need to all be removed or added at once.
-     * Alternatively we could reset the allFramesCursor when a preloaded topic is added or removed, but this would mean recalculating all tf's again whenever this happens.
+     *  - preloaded topics/schemas are only ever all removed or all added at once, otherwise it is not stable and would need to be reset
+     * How allFrames can change that this accounts for:
+     *  - [new blocks being loaded after cursor] - new messages are added to end of array. The cursor iterates over the new part of the array
+     *  - [blocks being evicted from beginning] - messages before cursor have been removed and cursor is no longer pointing at last read message. cursor looks back for last read message and sets cursor to that index, or if last read message receiveTime is less than the first message it resets the cursor index
+     *  - [blocks being evicted from end] - messages after cursor have been removed. cursor is still pointing at last read message and does not need to look back
+     *  - [new blocks being loaded before the cursor] - This can only happen if the cache eviction has occurred while the cursor was toward the end of the file, the user seeks to earlier in the file that hasn't been evicted.
+     *       The cursor is reset to 0 before the blockloader has been able to re-load in the prior blocks and starts reading from an allFrames that doesn't begin at the end of the file up to the currentTime (possibly rendering an incomplete frame).
+     *       allFrames will update and the cursor will see that there is a `lastReadMessage` mismatch and will look back until it finds the message, but the message will be after the cursor, so the cursor index will be set back to -1 and all of the `allFrames`
+     *       messages will be read in again until the currentTime. This will happen for each missing block between the beginning of the file and the seek time. This is not ideal, but it is a rare case.
      */
 
     // check to see that the last message at the cursor is the same as last time (that the array is stable)
