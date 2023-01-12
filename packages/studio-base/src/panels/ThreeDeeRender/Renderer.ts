@@ -317,7 +317,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
   private selectedRenderable: PickedRenderable | undefined;
   public colorScheme: "dark" | "light" = "light";
   public modelCache: ModelCache;
-  public transformTree = new TransformTree();
+  public transformTree: TransformTree;
   public coordinateFrameList: SelectEntry[] = [];
   public currentTime = 0n;
   public fixedFrameId: string | undefined;
@@ -447,6 +447,10 @@ export class Renderer extends EventEmitter<RendererEvents> {
     this.measurementTool = new MeasurementTool(this);
     this.publishClickTool = new PublishClickTool(this);
     this.coreSettings = new CoreSettings(this);
+    this.transformTree = new TransformTree(
+      undefined,
+      config.scene.transforms?.enablePreloading === true ? 100 : undefined,
+    );
 
     // Internal handlers for TF messages to update the transform tree
     this.addSchemaSubscriptions(FRAME_TRANSFORM_DATATYPES, {

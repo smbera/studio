@@ -21,7 +21,7 @@ import { DeepPartial } from "ts-essentials";
 import { useDebouncedCallback } from "use-debounce";
 
 import Logger from "@foxglove/log";
-import { Time, compare, isLessThan, toNanoSec } from "@foxglove/rostime";
+import { Time, compare, isGreaterThan, isLessThan, toNanoSec } from "@foxglove/rostime";
 import {
   LayoutActions,
   MessageEvent,
@@ -417,11 +417,18 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
   const [currentTime, setCurrentTime] = useState<Time | undefined>();
   const [didSeek, setDidSeek] = useState<boolean>(false);
   const [sharedPanelState, setSharedPanelState] = useState<undefined | Shared3DPanelState>();
-  const allFramesRef = useRef<readonly MessageEvent<unknown>[] | undefined>(undefined);
-  const [allFramesLength, setAllFramesLength] = useState(0);
-  const [allFramesCursor, setAllFramesCursor] = useState({
-    index: 0,
+  const [allFrames, setAllFrames] = useState<readonly MessageEvent<unknown>[] | undefined>(
+    undefined,
+  );
+  const [allFramesCursor, setAllFramesCursor] = useState<{
+    // index represents where the lastReadMessage is in allFrames.
+    index: number;
+    currentTimeReached?: Time;
+    lastReadMessage?: MessageEvent<unknown>;
+  }>({
+    index: -1,
     currentTimeReached: currentTime,
+    lastReadMessage: undefined,
   });
 
   const renderRef = useRef({ needsRender: false });
@@ -596,20 +603,7 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
 
         // allFrames has messages on preloaded topics across all frames (as they are loaded)
         deepParseMessageEvents(renderState.allFrames);
-        // Not sure if this same assumption can be made if cache eviction happens and the allFrames are the same size with different data
-        // might have to look at the beginning and end messages in that case?
-        if (
-          renderState.allFrames != undefined &&
-          allFramesRef.current?.length !== renderState.allFrames.length
-        ) {
-          setAllFramesLength(renderState.allFrames.length);
-          if (renderState.allFrames.length === 0 && allFramesRef.current?.length !== 0) {
-            // reset transform tree and cursor when preloaded messages are cleared so that it reads only from currentframe
-            setAllFramesCursor({ index: 0, currentTimeReached: { sec: 0, nsec: 0 } });
-            renderer?.clear();
-          }
-        }
-        allFramesRef.current = renderState.allFrames;
+        setAllFrames(renderState.allFrames);
       });
     };
 
@@ -671,12 +665,23 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
 
   // Handle preloaded messages and render a frame if new messages are available
   useEffect(() => {
-    if (
-      !renderer ||
-      !currentTime ||
-      !allFramesRef.current ||
-      allFramesRef.current.length === allFramesCursor.index
-    ) {
+    if (!renderer || !currentTime) {
+      return;
+    }
+
+    // index always indicates last read-in message
+    let cursor = allFramesCursor.index;
+
+    if (!allFrames || allFrames.length === 0) {
+      if (cursor > -1) {
+        // reset transform tree and cursor when preloaded messages are cleared so that it reads only from currentframe
+        setAllFramesCursor({
+          index: -1,
+          currentTimeReached: { sec: 0, nsec: 0 },
+          lastReadMessage: undefined,
+        });
+        renderer.clear();
+      }
       return;
     }
 
@@ -687,34 +692,63 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
     }
 
     /**
-     * This assumes that the allFrames is sorted by receiveTime and that no messages before the current time are after
-     * the first message past the current time. It also assumes that allFrames is only additive to the end.
+     * Assumptions about allFrames:
+     *  - always sorted by receiveTime
+     *  - preloaded topics/schemas are only ever all removed or all added at once, otherwise it is not stable
+     *  - messages are only ever subtracted from the beginning or added to the end (requires preloading from beginning to currentTime)
      * Not sure if this is an assumption we can always make. We might need to store a separate incrementally processed allFrames structure.
      * allFrames will not be stable with the addition/subtraction of new preloaded topics from the 3D pane.
      * This is solved by resetting the cursor and clearing the renderer when allFrames is cleared. This means we cannot partially add or remove preloaded topic
      * subscriptions they need to all be removed or added at once.
      * Alternatively we could reset the allFramesCursor when a preloaded topic is added or removed, but this would mean recalculating all tf's again whenever this happens.
      */
-    let cursor = allFramesCursor.index;
+
+    // check to see that the last message at the cursor is the same as last time (that the array is stable)
+    // if not then we can assume that eviction occurred and we need to go back to find our last message and set the cursor
+    let lastReadMessage = allFramesCursor.lastReadMessage;
+    // cursor should never be over allFramesLength, if it some how is, it means the cursor was at the end of `allFrames` prior to eviction and eviction shortened allframes
+    // in this case we should set the cursor to the end of allFrames
+    cursor = Math.min(cursor, allFrames.length - 1);
+    let message = allFrames[Math.max(0, cursor)];
+    // TODO: replace with binary search -- but at that point is there a reason to have the cursor index?
+    // go backwards in allFrames until we find the last read message
+    // this should only happen when eviction occurs or when going from no preloaded messages to preloaded messages
+    const firstMessage = allFrames[0]!;
+    // if the lastReadMessage is before the firstMessage, then it won't be in the allFrames array, and we can skip lookback
+    if (lastReadMessage && isLessThan(lastReadMessage.receiveTime, firstMessage.receiveTime)) {
+      cursor = -1;
+    }
+    while (cursor >= 1 && lastReadMessage !== message) {
+      cursor--;
+      message = allFrames[cursor];
+    }
+
     // load preloaded messages up to current time
-    while (cursor < allFramesLength) {
-      const message = allFramesRef.current[cursor]!;
+    while (cursor < allFrames.length - 1) {
+      cursor++;
+      message = allFrames[cursor]!;
       // read messages until we reach the current time
       if (isLessThan(currentTime, message.receiveTime)) {
         currentTimeReached = currentTime;
+        // reset cursor to last read message index
+        cursor--;
         break;
       }
 
       renderer.addMessageEvent(message);
-      cursor++;
-      if (cursor === allFramesRef.current.length) {
-        currentTimeReached = message.receiveTime;
+      lastReadMessage = message;
+      if (cursor === allFrames.length - 1) {
+        currentTimeReached = lastReadMessage.receiveTime;
       }
     }
 
-    setAllFramesCursor({ index: cursor, currentTimeReached });
-    renderRef.current.needsRender = true;
-  }, [allFramesCursor, renderer, currentTime, allFramesLength]);
+    const hasReadMessages = lastReadMessage !== allFramesCursor.lastReadMessage;
+    setAllFramesCursor({ index: cursor, currentTimeReached, lastReadMessage });
+    // want to re-render if frames were read and if the current time has been reached to avoid showing intermediate state
+    if (hasReadMessages && currentTimeReached && compare(currentTimeReached, currentTime) === 0) {
+      renderRef.current.needsRender = true;
+    }
+  }, [allFramesCursor, renderer, currentTime, allFrames]);
 
   // Notify the extension context when our subscription list changes
   useEffect(() => {
@@ -750,11 +784,23 @@ export function ThreeDeeRender({ context }: { context: PanelExtensionContext }):
   // Flush the renderer's state when the seek count changes
   useEffect(() => {
     if (renderer && didSeek) {
-      setAllFramesCursor({ index: 0, currentTimeReached: undefined });
+      if (
+        allFramesCursor.currentTimeReached &&
+        currentTime != undefined &&
+        // if the time reached by the cursor is greater than the current time, then we need to reset the cursor
+        // so that it can read the messages up to that point again
+        isGreaterThan(allFramesCursor.currentTimeReached, currentTime)
+      ) {
+        setAllFramesCursor({
+          index: -1,
+          currentTimeReached: undefined,
+          lastReadMessage: undefined,
+        });
+      }
       renderer.clear();
       setDidSeek(false);
     }
-  }, [renderer, didSeek]);
+  }, [renderer, didSeek, allFramesCursor, currentTime]);
 
   // Keep the renderer colorScheme and backgroundColor up to date
   useEffect(() => {
