@@ -14,7 +14,7 @@
 import { Typography, styled as muiStyled } from "@mui/material";
 import produce from "immer";
 import { difference, set, union } from "lodash";
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef, PropsWithChildren } from "react";
 import ReactDOM from "react-dom";
 import { useUpdateEffect } from "react-use";
 import { DeepPartial } from "ts-essentials";
@@ -24,7 +24,6 @@ import {
   PanelContextMenu,
   PanelContextMenuItem,
 } from "@foxglove/studio-base/components/PanelContextMenu";
-import PanelToolbar from "@foxglove/studio-base/components/PanelToolbar";
 import Stack from "@foxglove/studio-base/components/Stack";
 import inScreenshotTests from "@foxglove/studio-base/stories/inScreenshotTests";
 import { CameraInfo } from "@foxglove/studio-base/types/Messages";
@@ -34,8 +33,7 @@ import { fonts } from "@foxglove/studio-base/util/sharedStyleConstants";
 import { formatTimeRaw } from "@foxglove/studio-base/util/time";
 
 import { ImageCanvas, ImageEmptyState, Toolbar, TopicDropdown } from "./components";
-import { useCameraInfo, ANNOTATION_DATATYPES, useImagePanelMessages } from "./hooks";
-import helpContent from "./index.help.md";
+import { ANNOTATION_DATATYPES, useImagePanelMessages } from "./hooks";
 import { downloadImage } from "./lib/downloadImage";
 import { NORMALIZABLE_IMAGE_DATATYPES } from "./lib/normalizeMessage";
 import { getRelatedMarkerTopics, getMarkerOptions } from "./lib/util";
@@ -45,6 +43,16 @@ import type { Config, PixelData } from "./types";
 type Props = {
   context: PanelExtensionContext;
 };
+
+type ToolbarPortalProps = {
+  domNode: Element;
+};
+
+function ToolbarPortal(props: PropsWithChildren<ToolbarPortalProps>) {
+  // React does *not* create a new div. It renders the children into `domNode`.
+  // `domNode` is any valid DOM node, regardless of its location in the DOM.
+  return ReactDOM.createPortal(props.children, props.domNode);
+}
 
 const Timestamp = muiStyled(Typography, {
   shouldForwardProp: (prop) => prop !== "screenshotTest",
@@ -88,7 +96,8 @@ export function ImageView({ context }: Props): JSX.Element {
   );
   const [activePixelData, setActivePixelData] = useState<PixelData | undefined>();
 
-  const cameraInfo = useCameraInfo(cameraTopic);
+  // fixme
+  const cameraInfo = undefined; // = useCameraInfo(cameraTopic);
 
   const shouldSynchronize = config.synchronize && enabledMarkerTopics.length > 0;
 
@@ -117,7 +126,7 @@ export function ImageView({ context }: Props): JSX.Element {
           store.clear();
         }
         if (renderState.currentFrame) {
-          store.setCurrentFrame(renderState.currentFrame);
+          store.frame(renderState.currentFrame);
         }
       });
     };
@@ -230,10 +239,11 @@ export function ImageView({ context }: Props): JSX.Element {
     context,
   ]);
 
+  const { image, annotations } = store;
   const lastImageMessageRef = useRef(image);
 
   useEffect(() => {
-    if (image) {
+    if (image != undefined) {
       lastImageMessageRef.current = image;
     }
   }, [image]);
@@ -301,7 +311,7 @@ export function ImageView({ context }: Props): JSX.Element {
 
   const rawMarkerData = useMemo(() => {
     return {
-      markers: annotations ?? [],
+      markers: annotations,
       transformMarkers,
       // Convert to plain object before sending to web worker
       cameraInfo:
@@ -311,7 +321,7 @@ export function ImageView({ context }: Props): JSX.Element {
 
   return (
     <Stack flex="auto" overflow="hidden" position="relative">
-      <PanelToolbar helpContent={helpContent}>
+      <ToolbarPortal domNode={context.panelToolbarElement}>
         <Stack direction="row" flex="auto" alignItems="center" overflow="hidden">
           <TopicDropdown
             topics={imageTopics}
@@ -319,8 +329,8 @@ export function ImageView({ context }: Props): JSX.Element {
             onChange={(value) => setConfig((oldConfig) => ({ ...oldConfig, cameraTopic: value }))}
           />
         </Stack>
-      </PanelToolbar>
-      <PanelContextMenu itemsForClickPosition={contextMenuItemsForClickPosition} />
+      </ToolbarPortal>
+      {/* fixme <PanelContextMenu itemsForClickPosition={contextMenuItemsForClickPosition} /> */}
       <Stack fullWidth fullHeight>
         {/* Always render the ImageCanvas because it's expensive to unmount and start up. */}
         {imageMessageToRender && (

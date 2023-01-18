@@ -476,6 +476,7 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
   ]);
 
   const panelContainerRef = useRef<HTMLDivElement>(ReactNull);
+  const panelToolbarRef = useRef<HTMLDivElement>(ReactNull);
 
   useValueChangedDebugLog(initPanel, "initPanel");
   useValueChangedDebugLog(panelId, "panelId");
@@ -506,6 +507,7 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
     log.info(`Init panel ${panelId}`);
     const onUnmount = initPanel({
       panelElement,
+      panelToolbarElement: panelToolbarRef.current,
       ...partialExtensionContext,
 
       // eslint-disable-next-line no-restricted-syntax
@@ -550,7 +552,9 @@ function PanelExtensionAdapter(props: PanelExtensionAdapterProps): JSX.Element {
         ...style,
       }}
     >
-      <PanelToolbar />
+      <PanelToolbar>
+        <div style={{ width: "100%" }} ref={panelToolbarRef} />
+      </PanelToolbar>
       <div style={{ flex: 1, overflow: "hidden" }} ref={panelContainerRef} />
     </div>
   );

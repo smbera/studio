@@ -197,7 +197,7 @@ function useImagePanelMessages(initialState: {
   imageTopic: string;
   annotationTopics: string[];
   synchronize: boolean;
-}): ImagePanelState["actions"] {
+}): PublicState {
   const [store] = useState(() =>
     createStore<ImagePanelState>((set) => ({
       imageTopic: initialState.imageTopic,
