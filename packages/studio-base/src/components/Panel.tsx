@@ -15,8 +15,8 @@ import BorderAllIcon from "@mui/icons-material/BorderAll";
 import DeleteForeverOutlinedIcon from "@mui/icons-material/DeleteForeverOutlined";
 import LibraryAddOutlinedIcon from "@mui/icons-material/LibraryAddOutlined";
 import TabIcon from "@mui/icons-material/Tab";
-import { Button, styled as muiStyled, useTheme } from "@mui/material";
-import { last } from "lodash";
+import { Button, styled as muiStyled, Typography, useTheme } from "@mui/material";
+import { cloneDeep, isEmpty, last } from "lodash";
 import React, {
   useState,
   useCallback,
@@ -48,6 +48,7 @@ import { MosaicPathContext } from "@foxglove/studio-base/components/MosaicPathCo
 import PanelContext from "@foxglove/studio-base/components/PanelContext";
 import PanelErrorBoundary from "@foxglove/studio-base/components/PanelErrorBoundary";
 import { PanelRoot, PANEL_ROOT_CLASS_NAME } from "@foxglove/studio-base/components/PanelRoot";
+import PanelToolbar from "@foxglove/studio-base/components/PanelToolbar";
 import {
   useCurrentLayoutActions,
   useSelectedPanels,
@@ -132,10 +133,15 @@ const StyledButton = muiStyled(Button)(({ theme }) => ({
   },
 }));
 
+const DEFAULT_SPLIT_PERCENTAGE_RATIO = 0.5;
+const COLLAPSE_PANE_HEIGHT = 30;
+const EXPANDED_LEVEL = 0;
+
 type Props<Config> = {
   childId?: string;
   overrideConfig?: Config;
   tabId?: string;
+  panelsWrapDomRef?: React.MutableRefObject<HTMLDivElement | ReactNull>;
 };
 
 export interface PanelStatics<Config> {
@@ -162,7 +168,7 @@ export default function Panel<
   PanelComponent: ComponentConstructorType<PanelProps> & PanelStatics<Config>,
 ): ComponentType<Props<Config> & Omit<PanelProps, "config" | "saveConfig">> & PanelStatics<Config> {
   function ConnectedPanel(props: Props<Config>) {
-    const { childId, overrideConfig, tabId, ...otherProps } = props;
+    const { childId, overrideConfig, tabId, panelsWrapDomRef, ...otherProps } = props;
     const theme = useTheme();
     const isMounted = useMountedState();
 
@@ -176,6 +182,9 @@ export default function Panel<
       selectAllPanels,
       togglePanelSelected,
       getSelectedPanelIds,
+      panelExpandedInfo,
+      setPanelExpandedInfo,
+      getCurrentPanelExpandedInfo,
     } = useSelectedPanels();
 
     const isSelected = useMemo(
@@ -194,6 +203,7 @@ export default function Panel<
       closePanel,
       swapPanel,
       getCurrentLayoutState,
+      changePanelLayout,
     } = useCurrentLayoutActions();
 
     const [quickActionsKeyPressed, setQuickActionsKeyPressed] = useState(false);
@@ -458,6 +468,102 @@ export default function Panel<
       [parentPanelContext],
     );
 
+    const levelMap = useRef(new Map());
+
+    const isCollapsed = useCallback(
+      (panelId: MosaicNode<string>) => {
+        return !(getCurrentPanelExpandedInfo()[panelId as string] ?? true);
+      },
+      [getCurrentPanelExpandedInfo],
+    );
+
+    const calcLevel = useCallback(
+      (treeNode: MosaicNode<string>): number => {
+        if (levelMap.current.has(treeNode)) {
+          return levelMap.current.get(treeNode);
+        }
+        let level = 0;
+        if (typeof treeNode === "string") {
+          level = isCollapsed(treeNode) ? 1 : 0;
+        } else {
+          const { first, second, direction } = treeNode;
+          const firstLevel = calcLevel(first);
+          const secondLevel = calcLevel(second);
+
+          if (firstLevel === EXPANDED_LEVEL || secondLevel === EXPANDED_LEVEL) {
+            level = 0;
+          } else if (direction === "column") {
+            level = firstLevel + secondLevel;
+          } else {
+            level = Math.max(firstLevel, secondLevel);
+          }
+        }
+        levelMap.current.set(treeNode, level);
+        return level;
+      },
+      [isCollapsed],
+    );
+
+    const calcPercentage = useCallback(
+      (treeNode: MosaicNode<string>, remainingHeight: number) => {
+        if (typeof treeNode === "string") {
+          return;
+        }
+        const { first, second, direction } = treeNode;
+        const firstLevel = calcLevel(first);
+        const secondLevel = calcLevel(second);
+        let firstRemainingHeight = remainingHeight;
+        let secondRemainingHeight = remainingHeight;
+
+        if (direction === "column") {
+          if (firstLevel !== EXPANDED_LEVEL) {
+            const ratio = (COLLAPSE_PANE_HEIGHT * firstLevel) / remainingHeight;
+            treeNode.splitPercentage = ratio * 100;
+            firstRemainingHeight = ratio * remainingHeight;
+            secondRemainingHeight = (1 - ratio) * remainingHeight;
+          } else if (secondLevel !== EXPANDED_LEVEL) {
+            const ratio = (COLLAPSE_PANE_HEIGHT * secondLevel) / remainingHeight;
+            treeNode.splitPercentage = (1 - ratio) * 100;
+            firstRemainingHeight = (1 - ratio) * remainingHeight;
+            secondRemainingHeight = ratio * remainingHeight;
+          } else {
+            treeNode.splitPercentage = DEFAULT_SPLIT_PERCENTAGE_RATIO * 100;
+            firstRemainingHeight = DEFAULT_SPLIT_PERCENTAGE_RATIO * remainingHeight;
+            secondRemainingHeight = (1 - DEFAULT_SPLIT_PERCENTAGE_RATIO) * remainingHeight;
+          }
+        }
+
+        calcPercentage(first, firstRemainingHeight);
+        calcPercentage(second, secondRemainingHeight);
+      },
+      [calcLevel],
+    );
+
+    const toggleExpanded = useCallback(() => {
+      if (childId && panelsWrapDomRef?.current) {
+        setPanelExpandedInfo((oldPanelExpandedInfo) => {
+          const oldValue = oldPanelExpandedInfo[childId] ?? true;
+          const newPanelExpandedInfo = { ...oldPanelExpandedInfo, [childId]: !oldValue };
+          return newPanelExpandedInfo;
+        });
+
+        const root = mosaicActions.getRoot() as MosaicNode<string>;
+        if (typeof root !== "string") {
+          const newLayout = cloneDeep(root);
+          levelMap.current = new Map(); // reset levelMap
+          calcPercentage(newLayout, panelsWrapDomRef.current.offsetHeight);
+          changePanelLayout({ layout: newLayout });
+        }
+      }
+    }, [
+      childId,
+      panelsWrapDomRef,
+      setPanelExpandedInfo,
+      mosaicActions,
+      calcPercentage,
+      changePanelLayout,
+    ]);
+
     const setHasFullscreenDescendant = useCallback(
       // eslint-disable-next-line @foxglove/no-boolean-parameters
       (value: boolean) => {
@@ -504,7 +610,19 @@ export default function Panel<
       () => ({ config: panelComponentConfig, saveConfig, ...otherPanelProps } as PanelProps),
       [otherPanelProps, panelComponentConfig, saveConfig],
     );
-    const child = useMemo(() => <PanelComponent {...childProps} />, [childProps]);
+    const child = useMemo(() => {
+      if (childId && panelExpandedInfo[childId] === false) {
+        const { title: configTitle } = childProps.config;
+        return (
+          <PanelToolbar>
+            <Typography noWrap variant="body2" color="text.secondary" flex="auto">
+              {isEmpty(configTitle) ? title : configTitle}
+            </Typography>
+          </PanelToolbar>
+        );
+      }
+      return <PanelComponent {...childProps} />;
+    }, [childId, childProps, panelExpandedInfo, title]);
 
     const renderCount = useRef(0);
 
@@ -557,6 +675,8 @@ export default function Panel<
             exitFullscreen,
             setHasFullscreenDescendant,
             isFullscreen: fullscreen,
+            isExpanded: childId ? panelExpandedInfo[childId] ?? true : true,
+            toggleExpanded,
             tabId,
             // disallow dragging the root panel in a layout
             connectToolbarDragHandle: isTopLevelPanel ? undefined : connectToolbarDragHandle,

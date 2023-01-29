@@ -116,6 +116,9 @@ export default function MockCurrentLayoutProvider({
     setSelectedPanelIds: useCallback(() => {
       // no-op
     }, []),
+    panelExpandedInfo: {},
+    setPanelExpandedInfo: () => ({}),
+    getCurrentPanelExpandedInfo: useCallback(() => ({}), []),
     actions,
   });
   return <CurrentLayoutContext.Provider value={value}>{children}</CurrentLayoutContext.Provider>;

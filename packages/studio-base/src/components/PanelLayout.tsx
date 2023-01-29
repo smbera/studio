@@ -123,6 +123,8 @@ export function UnconnectedPanelLayout(props: Props): React.ReactElement {
     panelComponentCache.current.clear();
   }, [panelCatalog]);
 
+  const panelsWrapDomRef = useRef<HTMLDivElement | ReactNull>(ReactNull);
+
   const renderTile = useCallback(
     (id: string | Record<string, never> | undefined, path: MosaicPath) => {
       // `id` is usually a string. But when `layout` is empty, `id` will be an empty object, in which case we don't need to render Tile
@@ -168,7 +170,7 @@ export function UnconnectedPanelLayout(props: Props): React.ReactElement {
           >
             <MosaicPathContext.Provider value={path}>
               <PanelRemounter id={id} tabId={tabId}>
-                <Panel childId={id} tabId={tabId} />
+                <Panel childId={id} tabId={tabId} panelsWrapDomRef={panelsWrapDomRef} />
               </PanelRemounter>
             </MosaicPathContext.Provider>
           </Suspense>
@@ -185,14 +187,19 @@ export function UnconnectedPanelLayout(props: Props): React.ReactElement {
   const bodyToRender = useMemo(
     () =>
       layout != undefined ? (
-        <MosaicWithoutDragDropContext
-          renderTile={renderTile}
-          className="mosaic-foxglove-theme" // prevent the default mosaic theme from being applied
-          resize={{ minimumPaneSizePercentage: 2 }}
-          value={layout}
-          onChange={(newLayout) => onChange(newLayout ?? undefined)}
-          mosaicId={mosaicId}
-        />
+        <div
+          style={{ position: "relative", boxSizing: "border-box", width: "100%", height: "100%" }}
+          ref={panelsWrapDomRef}
+        >
+          <MosaicWithoutDragDropContext
+            renderTile={renderTile}
+            className="mosaic-foxglove-theme" // prevent the default mosaic theme from being applied
+            resize={{ minimumPaneSizePercentage: 2 }}
+            value={layout}
+            onChange={(newLayout) => onChange(newLayout ?? undefined)}
+            mosaicId={mosaicId}
+          />
+        </div>
       ) : (
         <EmptyPanelLayout tabId={tabId} />
       ),

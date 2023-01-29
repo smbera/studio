@@ -11,9 +11,12 @@
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
 
+import ArrowDownIcon from "@mui/icons-material/ArrowDropDown";
+import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
 import { styled as muiStyled, Typography } from "@mui/material";
 import { useContext, useMemo, CSSProperties } from "react";
+import { makeStyles } from "tss-react/mui";
 
 import PanelContext from "@foxglove/studio-base/components/PanelContext";
 import ToolbarIconButton from "@foxglove/studio-base/components/PanelToolbar/ToolbarIconButton";
@@ -47,6 +50,28 @@ const PanelToolbarRoot = muiStyled("div", {
     zIndex: theme.zIndex.appBar,
   }),
 );
+
+const useStyles = makeStyles()(() => ({
+  iconWrapper: {
+    cursor: "pointer",
+  },
+}));
+
+function ExpansionArrow({
+  expanded,
+  onClick,
+}: {
+  expanded: boolean;
+  onClick: () => void;
+}): JSX.Element {
+  const { classes } = useStyles();
+  const Component = expanded ? ArrowDownIcon : ArrowRightIcon;
+  return (
+    <div className={classes.iconWrapper} onClick={onClick}>
+      <Component />
+    </div>
+  );
+}
 
 // Panel toolbar should be added to any panel that's part of the
 // react-mosaic layout.  It adds a drag handle, remove/replace controls
@@ -95,17 +120,25 @@ export default React.memo<Props>(function PanelToolbar({
       enableDrag={rootDragRef != undefined}
       ref={rootDragRef}
     >
+      {panelContext?.tabId == undefined && (
+        <ExpansionArrow
+          expanded={panelContext?.isExpanded === true}
+          onClick={() => panelContext?.toggleExpanded()}
+        />
+      )}
       {children ??
         (panelContext != undefined && (
           <Typography noWrap variant="body2" color="text.secondary" flex="auto">
             {panelContext.title}
           </Typography>
         ))}
-      <PanelToolbarControls
-        additionalIcons={additionalIconsWithHelp}
-        isUnknownPanel={!!isUnknownPanel}
-        ref={controlsDragRef}
-      />
+      {(panelContext?.tabId != undefined || panelContext?.isExpanded === true) && (
+        <PanelToolbarControls
+          additionalIcons={additionalIconsWithHelp}
+          isUnknownPanel={!!isUnknownPanel}
+          ref={controlsDragRef}
+        />
+      )}
     </PanelToolbarRoot>
   );
 });

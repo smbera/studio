@@ -40,6 +40,8 @@ export type LayoutState = Readonly<{
     | undefined;
 }>;
 
+export type PanelExpandedInfo = { [panelId: string]: boolean };
+
 /**
  * Encapsulates the mosaic layout, user nodes, and playback settings (everything considered to be
  * part of a saved "layout") used by the current workspace.
@@ -60,6 +62,10 @@ export interface ICurrentLayout {
   setSelectedPanelIds: (
     _: readonly string[] | ((prevState: readonly string[]) => readonly string[]),
   ) => void;
+
+  panelExpandedInfo: PanelExpandedInfo;
+  setPanelExpandedInfo: React.Dispatch<React.SetStateAction<PanelExpandedInfo>>;
+  getCurrentPanelExpandedInfo: () => PanelExpandedInfo;
 
   actions: {
     /**
@@ -99,6 +105,9 @@ export type SelectedPanelActions = {
   ) => void;
   selectAllPanels: () => void;
   togglePanelSelected: (panelId: string, containingTabId: string | undefined) => void;
+  panelExpandedInfo: PanelExpandedInfo;
+  setPanelExpandedInfo: React.Dispatch<React.SetStateAction<PanelExpandedInfo>>;
+  getCurrentPanelExpandedInfo: () => PanelExpandedInfo;
 };
 
 const log = Logger.getLogger(__filename);
@@ -175,6 +184,10 @@ export function useSelectedPanels(): SelectedPanelActions {
 
   const setSelectedPanelIds = useGuaranteedContext(CurrentLayoutContext).setSelectedPanelIds;
   const getSelectedPanelIds = useGuaranteedContext(CurrentLayoutContext).getSelectedPanelIds;
+  const panelExpandedInfo = useGuaranteedContext(CurrentLayoutContext).panelExpandedInfo;
+  const setPanelExpandedInfo = useGuaranteedContext(CurrentLayoutContext).setPanelExpandedInfo;
+  const getCurrentPanelExpandedInfo =
+    useGuaranteedContext(CurrentLayoutContext).getCurrentPanelExpandedInfo;
   const { getCurrentLayoutState: getCurrentLayout } = useCurrentLayoutActions();
 
   const selectAllPanels = useCallback(() => {
@@ -207,6 +220,9 @@ export function useSelectedPanels(): SelectedPanelActions {
     setSelectedPanelIds,
     selectAllPanels,
     togglePanelSelected,
+    panelExpandedInfo,
+    setPanelExpandedInfo,
+    getCurrentPanelExpandedInfo,
   });
 }
 

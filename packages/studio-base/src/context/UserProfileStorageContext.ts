@@ -4,6 +4,7 @@
 
 import { createContext, useContext } from "react";
 
+import { PanelExpandedInfo } from "@foxglove/studio-base/context/CurrentLayoutContext";
 import { LayoutID } from "@foxglove/studio-base/services/ILayoutStorage";
 
 export type UserProfile = {
@@ -14,6 +15,7 @@ export type UserProfile = {
     /** List of panel types for which the settings tooltip has been shown */
     settingsTooltipShownForPanelTypes?: string[];
   };
+  panelExpandedInfo?: PanelExpandedInfo;
 };
 
 export type UserProfileStorage = {

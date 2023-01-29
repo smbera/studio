@@ -4,8 +4,8 @@
 import { difference, isEqual } from "lodash";
 import { useSnackbar } from "notistack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getNodeAtPath } from "react-mosaic-component";
-import { useAsync, useAsyncFn, useMountedState } from "react-use";
+import { getLeaves, getNodeAtPath } from "react-mosaic-component";
+import { useAsync, useAsyncFn, useMountedState, useUpdateEffect } from "react-use";
 import shallowequal from "shallowequal";
 import { v4 as uuidv4 } from "uuid";
 
@@ -16,6 +16,7 @@ import { useAnalytics } from "@foxglove/studio-base/context/AnalyticsContext";
 import CurrentLayoutContext, {
   ICurrentLayout,
   LayoutState,
+  PanelExpandedInfo,
 } from "@foxglove/studio-base/context/CurrentLayoutContext";
 import {
   AddPanelPayload,
@@ -33,7 +34,10 @@ import {
   SwapPanelPayload,
 } from "@foxglove/studio-base/context/CurrentLayoutContext/actions";
 import { useLayoutManager } from "@foxglove/studio-base/context/LayoutManagerContext";
-import { useUserProfileStorage } from "@foxglove/studio-base/context/UserProfileStorageContext";
+import {
+  UserProfile,
+  useUserProfileStorage,
+} from "@foxglove/studio-base/context/UserProfileStorageContext";
 import { defaultLayout } from "@foxglove/studio-base/providers/CurrentLayoutProvider/defaultLayout";
 import panelsReducer from "@foxglove/studio-base/providers/CurrentLayoutProvider/reducers";
 import { LayoutID } from "@foxglove/studio-base/services/ConsoleApi";
@@ -61,6 +65,31 @@ export default function CurrentLayoutProvider({
   const isMounted = useMountedState();
 
   const [mosaicId] = useState(() => uuidv4());
+
+  const [panelExpandedInfo, setPanelExpandedInfoInternal] = useState<PanelExpandedInfo>({});
+  const panelExpandedInfoRef = useRef(panelExpandedInfo);
+  const setPanelExpandedInfo = useCallback((value: React.SetStateAction<PanelExpandedInfo>) => {
+    const newValue = typeof value === "function" ? value(panelExpandedInfoRef.current) : value;
+    setPanelExpandedInfoInternal(newValue);
+    panelExpandedInfoRef.current = newValue;
+  }, []);
+  const getCurrentPanelExpandedInfo = useCallback(() => panelExpandedInfoRef.current, []);
+
+  const [, updatePanelExpandedInfo] = useAsyncFn(
+    async (newPanelExpandedInfo: UserProfile | ((prev: UserProfile) => UserProfile)) => {
+      setUserProfile(newPanelExpandedInfo).catch((error) => {
+        console.error(error);
+        enqueueSnackbar(`The current panelExpandedInfo could not be saved. ${error.toString()}`, {
+          variant: "error",
+        });
+      });
+    },
+    [enqueueSnackbar, setUserProfile],
+  );
+
+  useUpdateEffect(() => {
+    void updatePanelExpandedInfo(() => ({ panelExpandedInfo }));
+  }, [panelExpandedInfo, updatePanelExpandedInfo]);
 
   const layoutStateListeners = useRef(new Set<(_: LayoutState) => void>());
   const addLayoutStateListener = useCallback((listener: (_: LayoutState) => void) => {
@@ -108,6 +137,30 @@ export default function CurrentLayoutProvider({
     [],
   );
 
+  const updatePanelExpandedInfoFromUserProfile = useCallback(
+    (data: LayoutData) => {
+      if (data.layout != undefined) {
+        const panelIds = getLeaves(data.layout);
+        getUserProfile()
+          .then((userProfile) => {
+            const { panelExpandedInfo: storedPanelExpandedInfo } = userProfile;
+            const newPanelExpandedInfo: PanelExpandedInfo = {};
+            panelIds.forEach((panelId) => {
+              newPanelExpandedInfo[panelId] = storedPanelExpandedInfo?.[panelId] ?? true;
+            });
+            setPanelExpandedInfo(newPanelExpandedInfo);
+          })
+          .catch((error) => {
+            console.error(error);
+            enqueueSnackbar(`The current panelExpandedInfo could not get. ${error.toString()}`, {
+              variant: "error",
+            });
+          });
+      }
+    },
+    [enqueueSnackbar, getUserProfile, setPanelExpandedInfo],
+  );
+
   const [, setSelectedLayoutId] = useAsyncFn(
     async (
       id: LayoutID | undefined,
@@ -126,11 +179,12 @@ export default function CurrentLayoutProvider({
         if (layout == undefined) {
           setLayoutState({ selectedLayout: undefined });
         } else {
+          const data = layout.working?.data ?? layout.baseline.data;
           setLayoutState({
             selectedLayout: {
               loading: false,
               id: layout.id,
-              data: layout.working?.data ?? layout.baseline.data,
+              data,
             },
           });
           if (saveToProfile) {
@@ -140,6 +194,7 @@ export default function CurrentLayoutProvider({
                 variant: "error",
               });
             });
+            updatePanelExpandedInfoFromUserProfile(data);
           }
         }
       } catch (error) {
@@ -150,7 +205,14 @@ export default function CurrentLayoutProvider({
         setLayoutState({ selectedLayout: undefined });
       }
     },
-    [enqueueSnackbar, isMounted, layoutManager, setLayoutState, setUserProfile],
+    [
+      enqueueSnackbar,
+      isMounted,
+      layoutManager,
+      setLayoutState,
+      setUserProfile,
+      updatePanelExpandedInfoFromUserProfile,
+    ],
   );
 
   type UpdateLayoutParams = { id: LayoutID; data: LayoutData };
@@ -169,6 +231,26 @@ export default function CurrentLayoutProvider({
       }
       const oldData = layoutStateRef.current.selectedLayout.data;
       const newData = panelsReducer(oldData, action);
+
+      const updatePanelExpandedInfoTypes = [
+        "DROP_PANEL",
+        "ADD_PANEL",
+        "SPLIT_PANEL",
+        "SWAP_PANEL",
+        "CLOSE_PANEL",
+        "CHANGE_PANEL_LAYOUT",
+      ];
+
+      if (updatePanelExpandedInfoTypes.includes(action.type)) {
+        const oldPanelExpandedInfo = panelExpandedInfoRef.current;
+        const newPanelExpandedInfo: PanelExpandedInfo = {};
+        // eslint-disable-next-line no-restricted-syntax
+        const newPanelIds = getLeaves(newData.layout ?? null);
+        newPanelIds.forEach((panelId) => {
+          newPanelExpandedInfo[panelId] = oldPanelExpandedInfo[panelId] ?? true;
+        });
+        setPanelExpandedInfo(newPanelExpandedInfo);
+      }
 
       // the panel state did not change, so no need to perform layout state updates or layout manager updates
       if (isEqual(oldData, newData)) {
@@ -208,7 +290,7 @@ export default function CurrentLayoutProvider({
       // debounced params are set in the proper order, we invoke setLayoutState at the end.
       setLayoutState({ selectedLayout: { ...newLayout, loading: false } });
     },
-    [analytics, enqueueSnackbar, isMounted, layoutManager, setLayoutState],
+    [analytics, enqueueSnackbar, isMounted, layoutManager, setLayoutState, setPanelExpandedInfo],
   );
 
   // Changes to the layout storage from external user actions (such as resetting a layout to a
@@ -357,6 +439,9 @@ export default function CurrentLayoutProvider({
     mosaicId,
     getSelectedPanelIds,
     setSelectedPanelIds,
+    panelExpandedInfo,
+    setPanelExpandedInfo,
+    getCurrentPanelExpandedInfo,
     actions,
   });
 

@@ -8,7 +8,11 @@ import { PanelStatics } from "@foxglove/studio-base/components/Panel";
 import { ExtensionNamespace } from "@foxglove/studio-base/types/Extensions";
 import { PanelConfig } from "@foxglove/studio-base/types/panels";
 
-export type PanelComponent = ComponentType<{ childId?: string; tabId?: string }> &
+export type PanelComponent = ComponentType<{
+  childId?: string;
+  tabId?: string;
+  panelsWrapDomRef?: React.MutableRefObject<HTMLDivElement | ReactNull>;
+}> &
   PanelStatics<PanelConfig>;
 
 export type PanelInfo = {
