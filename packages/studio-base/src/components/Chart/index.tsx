@@ -297,6 +297,37 @@ function Chart(props: Props): JSX.Element {
     onFinishRender?.();
   }, [getNewUpdateMessage, maybeUpdateScales, onFinishRender, onStartRender, type]);
 
+  const onWheel = useCallback(
+    async (event: WheelEvent) => {
+      if (!event.ctrlKey) {
+        return;
+      }
+
+      // Prevent browser zooming
+      event.preventDefault();
+
+      if (!zoomEnabled || !rpcSendRef.current) {
+        return;
+      }
+
+      const boundingRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      const scales = await rpcSendRef.current<RpcScales>("wheel", {
+        event: {
+          cancelable: false,
+          deltaY: event.deltaY,
+          deltaX: event.deltaX,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          target: {
+            boundingClientRect: boundingRect.toJSON(),
+          },
+        },
+      });
+      maybeUpdateScales(scales, { userInteraction: true });
+    },
+    [zoomEnabled, maybeUpdateScales],
+  );
+
   useLayoutEffect(() => {
     const container = containerRef.current;
     if (!container || !panEnabled) {
@@ -369,34 +400,13 @@ function Chart(props: Props): JSX.Element {
       maybeUpdateScales(scales, { userInteraction: true });
     });
 
+    container.addEventListener('wheel', onWheel, { passive: false });
+
     return () => {
       hammerManager.destroy();
+      container.removeEventListener('wheel', onWheel);
     };
-  }, [maybeUpdateScales, panEnabled, props.options.plugins?.zoom?.pan?.threshold]);
-
-  const onWheel = useCallback(
-    async (event: React.WheelEvent<HTMLElement>) => {
-      if (!zoomEnabled || !rpcSendRef.current) {
-        return;
-      }
-
-      const boundingRect = event.currentTarget.getBoundingClientRect();
-      const scales = await rpcSendRef.current<RpcScales>("wheel", {
-        event: {
-          cancelable: false,
-          deltaY: event.deltaY,
-          deltaX: event.deltaX,
-          clientX: event.clientX,
-          clientY: event.clientY,
-          target: {
-            boundingClientRect: boundingRect.toJSON(),
-          },
-        },
-      });
-      maybeUpdateScales(scales, { userInteraction: true });
-    },
-    [zoomEnabled, maybeUpdateScales],
-  );
+  }, [maybeUpdateScales, onWheel, panEnabled, props.options.plugins?.zoom?.pan?.threshold]);
 
   const onMouseDown = useCallback(
     async (event: React.MouseEvent<HTMLElement>) => {
@@ -516,7 +526,6 @@ function Chart(props: Props): JSX.Element {
   return (
     <div
       ref={containerRef}
-      onWheel={onWheel}
       onClick={onClick}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
