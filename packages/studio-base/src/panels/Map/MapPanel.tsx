@@ -14,6 +14,7 @@ import {
   TileLayer,
 } from "leaflet";
 import { difference, groupBy, isEqual, minBy, partition, union } from "lodash";
+import memoizeWeak from "memoize-weak";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
 import { useDebouncedCallback } from "use-debounce";
@@ -89,6 +90,10 @@ function isSupportedSchema(schemaName: string) {
   }
 }
 
+const memoizedFilterMessages = memoizeWeak((msgs: readonly MessageEvent<unknown>[]) =>
+  msgs.filter(isValidMapMessage),
+);
+
 function MapPanel(props: MapPanelProps): JSX.Element {
   const { context } = props;
 
@@ -104,6 +109,7 @@ function MapPanel(props: MapPanelProps): JSX.Element {
       layer: initialConfig.layer ?? "map",
       topicColors: initialConfig.topicColors ?? {},
       zoomLevel: initialConfig.zoomLevel,
+      maxNativeZoom: initialConfig.maxNativeZoom ?? 18,
     };
   });
 
@@ -259,6 +265,13 @@ function MapPanel(props: MapPanelProps): JSX.Element {
       });
     }
 
+    if (path[1] === "maxNativeZoom" && input === "select") {
+      setConfig((oldConfig) => {
+        const zoom = parseInt(String(value));
+        return { ...oldConfig, maxNativeZoom: isFinite(zoom) ? zoom : oldConfig.maxNativeZoom };
+      });
+    }
+
     if (path[1] === "followTopic" && input === "select") {
       setConfig((oldConfig) => {
         return { ...oldConfig, followTopic: String(value) };
@@ -293,6 +306,12 @@ function MapPanel(props: MapPanelProps): JSX.Element {
       customLayer.setUrl(config.customTileUrl);
     }
   }, [config.layer, config.customTileUrl, customLayer]);
+
+  useEffect(() => {
+    if (config.layer === "custom") {
+      customLayer.options.maxNativeZoom = config.maxNativeZoom;
+    }
+  }, [config.layer, config.maxNativeZoom, customLayer]);
 
   // Subscribe to eligible and enabled topics
   useEffect(() => {
@@ -411,7 +430,8 @@ function MapPanel(props: MapPanelProps): JSX.Element {
       }
 
       if (renderState.allFrames) {
-        setAllMapMessages(renderState.allFrames.filter(isValidMapMessage));
+        // use memoization to avoid re-filtering allFrames when it has not changed
+        setAllMapMessages(memoizedFilterMessages(renderState.allFrames));
       }
 
       // Only update the current frame if we have new messages.
@@ -524,6 +544,9 @@ function MapPanel(props: MapPanelProps): JSX.Element {
       });
 
       topicLayer.allFrames.addLayer(pointLayer);
+
+      // Push this layer to the back so it renders under the current messages.
+      pointLayer.bringToBack();
 
       allGeoMessages
         .filter((message) => message.topic === topic)

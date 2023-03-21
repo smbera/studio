@@ -338,7 +338,7 @@ export class Renderer extends EventEmitter<RendererEvents> {
   public constructor(canvas: HTMLCanvasElement, config: RendererConfig) {
     super();
     // NOTE: Global side effect
-    THREE.Object3D.DefaultUp = new THREE.Vector3(0, 0, 1);
+    THREE.Object3D.DEFAULT_UP = new THREE.Vector3(0, 0, 1);
 
     this.canvas = canvas;
     this.config = config;
@@ -452,21 +452,17 @@ export class Renderer extends EventEmitter<RendererEvents> {
     this.addSchemaSubscriptions(FRAME_TRANSFORM_DATATYPES, {
       handler: this.handleFrameTransform,
       shouldSubscribe: () => true,
-      // Disabled until we can efficiently preload transforms. See
-      // <https://github.com/foxglove/studio/issues/4657> for more details.
-      // preload: config.scene.transforms?.enablePreloading ?? true,
+      preload: config.scene.transforms?.enablePreloading ?? true,
     });
     this.addSchemaSubscriptions(TF_DATATYPES, {
       handler: this.handleTFMessage,
       shouldSubscribe: () => true,
-      // Disabled until we can efficiently preload transforms
-      // preload: config.scene.transforms?.enablePreloading ?? true,
+      preload: config.scene.transforms?.enablePreloading ?? true,
     });
     this.addSchemaSubscriptions(TRANSFORM_STAMPED_DATATYPES, {
       handler: this.handleTransformStamped,
       shouldSubscribe: () => true,
-      // Disabled until we can efficiently preload transforms
-      // preload: config.scene.transforms?.enablePreloading ?? true,
+      preload: config.scene.transforms?.enablePreloading ?? true,
     });
 
     this.addSceneExtension(this.coreSettings);
@@ -1002,9 +998,15 @@ export class Renderer extends EventEmitter<RendererEvents> {
       this.settings.errors.add(
         ["transforms", `frame:${childFrameId}`],
         TF_OVERFLOW,
-        `Transform history is at capacity (${frame.maxCapacity}), TFs will be dropped`,
+        `[Warning] Transform history is at capacity (${frame.maxCapacity}), old TFs will be dropped`,
       );
     }
+  }
+
+  public removeTransform(childFrameId: string, parentFrameId: string, stamp: bigint): void {
+    this.transformTree.removeTransform(childFrameId, parentFrameId, stamp);
+    this.coordinateFrameList = this.transformTree.frameList();
+    this.emit("transformTreeUpdated", this);
   }
 
   // Callback handlers

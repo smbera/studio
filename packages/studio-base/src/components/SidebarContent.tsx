@@ -20,13 +20,14 @@ const useStyles = makeStyles()((theme) => ({
     flexShrink: 0,
     display: "flex",
     alignItems: "center",
-    padding: theme.spacing(2),
+    padding: theme.spacing(2, 2, 0, 2),
     gap: theme.spacing(0.5),
   },
 }));
 
 export function SidebarContent({
   disablePadding = false,
+  disableToolbar = false,
   title,
   children,
   leadingItems,
@@ -37,26 +38,28 @@ export function SidebarContent({
 
   return (
     <Stack overflow={overflow} fullHeight flex="auto" gap={1}>
-      <div className={classes.toolbar}>
-        {leadingItems != undefined && (
-          <div className={classes.leadingItems}>
-            {leadingItems.map((item, i) => (
-              <Fragment key={i}>{item}</Fragment>
-            ))}
-          </div>
-        )}
-        <Typography component="h2" variant="h4" fontWeight={800} flex="auto">
-          {title}
-        </Typography>
-        {trailingItems != undefined && (
-          <Stack direction="row" alignItems="center">
-            {trailingItems.map((item, i) => (
-              <div key={i}>{item}</div>
-            ))}
-          </Stack>
-        )}
-      </div>
-      <Stack flex="auto" {...(!disablePadding && { paddingX: 2, paddingBottom: 2 })}>
+      {!disableToolbar && (
+        <div className={classes.toolbar}>
+          {leadingItems != undefined && (
+            <div className={classes.leadingItems}>
+              {leadingItems.map((item, i) => (
+                <Fragment key={i}>{item}</Fragment>
+              ))}
+            </div>
+          )}
+          <Typography component="h2" variant="h4" fontWeight={800} flex="auto">
+            {title}
+          </Typography>
+          {trailingItems != undefined && (
+            <Stack direction="row" alignItems="center">
+              {trailingItems.map((item, i) => (
+                <div key={i}>{item}</div>
+              ))}
+            </Stack>
+          )}
+        </div>
+      )}
+      <Stack flex="auto" {...(!disablePadding && { padding: 2 })}>
         {children}
       </Stack>
     </Stack>
@@ -64,8 +67,9 @@ export function SidebarContent({
 }
 
 type SidebarContentProps = {
-  title: string;
+  title?: string;
   disablePadding?: boolean;
+  disableToolbar?: boolean;
 
   /** Buttons/items to display on the leading (left) side of the header */
   leadingItems?: React.ReactNode[];

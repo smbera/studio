@@ -11,58 +11,106 @@ import {
   ListItemText,
   Menu,
   MenuItem,
+  PopoverPosition,
+  PopoverReference,
+  Tooltip,
+  Typography,
 } from "@mui/material";
 import { useSnackbar } from "notistack";
 import { forwardRef, useCallback } from "react";
+import tinycolor from "tinycolor2";
 import { makeStyles } from "tss-react/mui";
 
 import Logger from "@foxglove/log";
-import { useCurrentUser } from "@foxglove/studio-base/context/CurrentUserContext";
+import {
+  APP_BAR_FOREGROUND_COLOR,
+  APP_BAR_PRIMARY_COLOR,
+} from "@foxglove/studio-base/components/AppBar/constants";
+import { useCurrentUser, User } from "@foxglove/studio-base/context/CurrentUserContext";
 import { useConfirm } from "@foxglove/studio-base/hooks/useConfirm";
 
 const log = Logger.getLogger(__filename);
 
 const useStyles = makeStyles()((theme) => ({
+  tooltip: {
+    marginTop: `${theme.spacing(0.5)} !important`,
+  },
   avatar: {
     color: theme.palette.common.white,
-    backgroundColor: "#9480ed",
-    height: theme.spacing(4),
-    width: theme.spacing(4),
+    backgroundColor: APP_BAR_PRIMARY_COLOR,
+    height: theme.spacing(3.5),
+    width: theme.spacing(3.5),
   },
-  avatarButton: {
-    padding: 0,
+  iconButton: {
+    padding: theme.spacing(1),
+    borderRadius: 0,
+
+    "&:hover": {
+      backgroundColor: tinycolor(APP_BAR_FOREGROUND_COLOR).setAlpha(0.08).toRgbString(),
+    },
+    "&.Mui-selected": {
+      backgroundColor: APP_BAR_PRIMARY_COLOR,
+    },
+  },
+  menuList: {
+    minWidth: 200,
+  },
+  userIconImage: {
+    objectFit: "cover",
+    width: "100%",
   },
 }));
 
-export const UserIconButton = forwardRef<HTMLButtonElement, IconButtonProps>((props, ref) => {
+type UserIconProps = IconButtonProps & {
+  currentUser?: User;
+};
+
+export const UserIconButton = forwardRef<HTMLButtonElement, UserIconProps>((props, ref) => {
   const { classes } = useStyles();
+  const { currentUser: me, ...otherProps } = props;
 
   return (
-    <IconButton {...props} ref={ref} className={classes.avatarButton}>
-      <Avatar className={classes.avatar} variant="rounded">
-        <PersonIcon />
-      </Avatar>
-    </IconButton>
+    <Tooltip classes={{ tooltip: classes.tooltip }} title={me?.email ?? "Profile"} arrow={false}>
+      <IconButton {...otherProps} ref={ref} className={classes.iconButton}>
+        <Avatar className={classes.avatar} variant="rounded">
+          {me?.avatarImageUrl != undefined && (
+            <img
+              src={me.avatarImageUrl}
+              referrerPolicy="same-origin"
+              className={classes.userIconImage}
+            />
+          )}
+          {me?.avatarImageUrl == undefined && <PersonIcon />}
+        </Avatar>
+      </IconButton>
+    </Tooltip>
   );
 });
 UserIconButton.displayName = "UserIconButton";
 
 export function UserMenu({
   anchorEl,
+  anchorReference,
+  anchorPosition,
+  disablePortal,
   handleClose,
   open,
 }: {
   handleClose: () => void;
   anchorEl?: HTMLElement;
+  anchorReference?: PopoverReference;
+  anchorPosition?: PopoverPosition;
+  disablePortal?: boolean;
   open: boolean;
 }): JSX.Element {
+  const { classes } = useStyles();
   const { currentUser, signOut } = useCurrentUser();
   const { enqueueSnackbar } = useSnackbar();
   const [confirm, confirmModal] = useConfirm();
 
   const beginSignOut = useCallback(async () => {
     try {
-      await signOut();
+      await signOut?.();
     } catch (error) {
       log.error(error);
       enqueueSnackbar((error as Error).toString(), { variant: "error" });
@@ -91,25 +139,23 @@ export function UserMenu({
     <>
       <Menu
         anchorEl={anchorEl}
+        anchorReference={anchorReference}
+        anchorPosition={anchorPosition}
+        disablePortal={disablePortal}
         id="account-menu"
         open={open}
         onClose={handleClose}
         onClick={handleClose}
-        MenuListProps={{
-          sx: {
-            minWidth: 200,
-          },
-        }}
+        MenuListProps={{ className: classes.menuList }}
       >
         <MenuItem onClick={onSettingsClick}>
           <ListItemText primary={currentUser.email} />
         </MenuItem>
-        <MenuItem onClick={onSettingsClick}>
-          <ListItemText>User settings</ListItemText>
-        </MenuItem>
-        <Divider />
+        <Divider variant="middle" />
         <MenuItem onClick={onSignoutClick}>
-          <ListItemText>Log out</ListItemText>
+          <ListItemText>
+            <Typography color="error">Sign out</Typography>
+          </ListItemText>
         </MenuItem>
       </Menu>
       {confirmModal}

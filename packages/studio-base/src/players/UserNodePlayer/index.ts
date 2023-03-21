@@ -134,6 +134,7 @@ export default class UserNodePlayer implements Player {
   // keep track of last message on all topics to recompute output topic messages when user nodes change
   private _lastMessageByInputTopic = new Map<string, MessageEvent<unknown>>();
   private _userNodeIdsNeedUpdate = new Set<string>();
+  private _globalVariablesChanged = false;
 
   private _protectedState = new MutexLocked<ProtectedState>({
     userNodes: {},
@@ -145,6 +146,7 @@ export default class UserNodePlayer implements Player {
 
   // exposed as a static to allow testing to mock/replace
   private static CreateNodeTransformWorker = (): SharedWorker => {
+    // foxglove-depcheck-used: babel-plugin-transform-import-meta
     return new SharedWorker(new URL("./nodeTransformerWorker/index", import.meta.url), {
       // Although we are using SharedWorkers, we do not actually want to share worker instances
       // between tabs. We achieve this by passing in a unique name.
@@ -154,6 +156,7 @@ export default class UserNodePlayer implements Player {
 
   // exposed as a static to allow testing to mock/replace
   private static CreateNodeRuntimeWorker = (): SharedWorker => {
+    // foxglove-depcheck-used: babel-plugin-transform-import-meta
     return new SharedWorker(new URL("./nodeRuntimeWorker/index", import.meta.url), {
       // Although we are using SharedWorkers, we do not actually want to share worker instances
       // between tabs. We achieve this by passing in a unique name.
@@ -320,11 +323,20 @@ export default class UserNodePlayer implements Player {
         .sort((a, b) => compare(a.receiveTime, b.receiveTime));
       for (const nodeRegistration of fullRegistrations) {
         const outTopic = nodeRegistration.output.name;
+        // Clear out any previously processed messages that were previously in the output topic.
+        // otherwise it will contain duplicates.
+        if (messagesByTopic[outTopic] != undefined) {
+          messagesByTopic[outTopic] = [];
+        }
+
         for (const message of blockMessages) {
           if (nodeRegistration.inputs.includes(message.topic)) {
             const outputMessage = await nodeRegistration.processMessage(message, globalVariables);
             if (outputMessage) {
-              messagesByTopic[outTopic] ??= [];
+              // https://github.com/typescript-eslint/typescript-eslint/issues/6632
+              if (!messagesByTopic[outTopic]) {
+                messagesByTopic[outTopic] = [];
+              }
               messagesByTopic[outTopic]?.push(outputMessage);
             }
           }
@@ -350,6 +362,7 @@ export default class UserNodePlayer implements Player {
 
   public setGlobalVariables(globalVariables: GlobalVariables): void {
     this._globalVariables = globalVariables;
+    this._globalVariablesChanged = true;
   }
 
   // Called when userNode state is updated.
@@ -413,7 +426,6 @@ export default class UserNodePlayer implements Player {
     // a specific node. A node may have a problem that may later clear. Using the key we can add/remove
     // problems for specific userspace nodes independently of other userspace nodes.
     const problemKey = `node-id-${nodeId}`;
-
     const buildMessageProcessor = (): NodeRegistration["processMessage"] => {
       return async (msgEvent: MessageEvent<unknown>, globalVariables: GlobalVariables) => {
         const terminateSignal = terminateCondvar.wait();
@@ -830,6 +842,15 @@ export default class UserNodePlayer implements Player {
 
           for (const topic of inputTopics) {
             inputTopicsForRecompute.add(topic);
+          }
+        }
+
+        // if the globalVariables have changed recompute all last messages for the current frame
+        // there's no way to know which nodes are affected by the globalVariables change to make this more specific
+        if (this._globalVariablesChanged) {
+          this._globalVariablesChanged = false;
+          for (const inputTopic of this._lastMessageByInputTopic.keys()) {
+            inputTopicsForRecompute.add(inputTopic);
           }
         }
 

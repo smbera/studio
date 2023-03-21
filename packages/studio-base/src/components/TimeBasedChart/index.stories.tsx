@@ -10,6 +10,7 @@
 //   This source code is licensed under the Apache License, Version 2.0,
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
+import { Story } from "@storybook/react";
 import cloneDeep from "lodash/cloneDeep";
 import { useState, useCallback, useRef, useEffect } from "react";
 import TestUtils from "react-dom/test-utils";
@@ -96,6 +97,7 @@ export default {
       delay: 50,
     },
     colorScheme: "dark",
+    disableI18n: true,
   },
 };
 
@@ -165,8 +167,7 @@ CanZoomAndUpdate.parameters = {
   },
 };
 
-CleansUpTooltipOnUnmount.parameters = { useReadySignal: true };
-export function CleansUpTooltipOnUnmount(_args: unknown): JSX.Element | ReactNull {
+export const CleansUpTooltipOnUnmount: Story = (_args: unknown) => {
   const [hasRenderedOnce, setHasRenderedOnce] = useState<boolean>(false);
   const { error } = useAsync(async () => {
     const [canvas] = document.getElementsByTagName("canvas");
@@ -177,8 +178,8 @@ export function CleansUpTooltipOnUnmount(_args: unknown): JSX.Element | ReactNul
     TestUtils.Simulate.mouseEnter(canvas!.parentElement!);
     for (let i = 0; !tooltip && i < 20; i++) {
       TestUtils.Simulate.mouseMove(canvas!.parentElement!, {
-        clientX: 330 + left,
-        clientY: 339 + top,
+        clientX: 70 + left,
+        clientY: 296 + top,
       });
       await delay(100);
       tooltip = document.querySelector("[data-testid~=TimeBasedChartTooltipContent]") ?? undefined;
@@ -212,7 +213,11 @@ export function CleansUpTooltipOnUnmount(_args: unknown): JSX.Element | ReactNul
       </MockMessagePipelineProvider>
     </div>
   );
-}
+};
+CleansUpTooltipOnUnmount.play = async (ctx) => {
+  await ctx.parameters.storyReady;
+};
+CleansUpTooltipOnUnmount.parameters = { useReadySignal: true };
 
 export function CallPauseOnInitialMount(): JSX.Element {
   const [unpauseFrameCount, setUnpauseFrameCount] = useState(0);

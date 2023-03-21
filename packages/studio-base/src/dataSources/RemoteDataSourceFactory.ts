@@ -11,6 +11,27 @@ import {
 import { IterablePlayer, WorkerIterableSource } from "@foxglove/studio-base/players/IterablePlayer";
 import { Player } from "@foxglove/studio-base/players/types";
 
+const initWorkers: Record<string, () => Worker> = {
+  ".bag": () => {
+    return new Worker(
+      // foxglove-depcheck-used: babel-plugin-transform-import-meta
+      new URL(
+        "@foxglove/studio-base/players/IterablePlayer/BagIterableSourceWorker.worker",
+        import.meta.url,
+      ),
+    );
+  },
+  ".mcap": () => {
+    return new Worker(
+      // foxglove-depcheck-used: babel-plugin-transform-import-meta
+      new URL(
+        "@foxglove/studio-base/players/IterablePlayer/Mcap/McapIterableSourceWorker.worker",
+        import.meta.url,
+      ),
+    );
+  },
+};
+
 class RemoteDataSourceFactory implements IDataSourceFactory {
   public id = "remote-file";
 
@@ -50,8 +71,12 @@ class RemoteDataSourceFactory implements IDataSourceFactory {
     }
 
     const extension = path.extname(new URL(url).pathname);
-    const sourceType = { ".bag": "rosbag", ".mcap": "mcap" }[extension] ?? "";
-    const source = new WorkerIterableSource({ sourceType, initArgs: { url } });
+    const initWorker = initWorkers[extension];
+    if (!initWorker) {
+      throw new Error(`Unsupported extension: ${extension}`);
+    }
+
+    const source = new WorkerIterableSource({ initWorker, initArgs: { url } });
 
     return new IterablePlayer({
       source,

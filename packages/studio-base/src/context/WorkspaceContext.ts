@@ -4,13 +4,28 @@
 
 import { createContext, useContext } from "react";
 
-export const WorkspaceContext = createContext({
+type WorkspaceContextType = {
+  panelSettingsOpen: boolean;
+  openPanelSettings: () => void;
+  openAccountSettings: () => void;
+  openLayoutBrowser: () => void;
+
+  leftSidebarOpen: boolean;
+  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  setLeftSidebarOpen: (open: boolean) => void;
+
+  rightSidebarOpen: boolean;
+  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  setRightSidebarOpen: (open: boolean) => void;
+};
+
+export const WorkspaceContext = createContext<WorkspaceContextType>({
   panelSettingsOpen: false,
+  leftSidebarOpen: false,
+  rightSidebarOpen: false,
+
   openPanelSettings: (): void => {
     throw new Error("Must be in a WorkspaceContext.Provider to open panel settings");
-  },
-  openHelp: (): void => {
-    throw new Error("Must be in a WorkspaceContext.Provider to open help");
   },
   openAccountSettings: (): void => {
     throw new Error("Must be in a WorkspaceContext.Provider to open account settings");
@@ -18,15 +33,15 @@ export const WorkspaceContext = createContext({
   openLayoutBrowser: (): void => {
     throw new Error("Must be in a WorkspaceContext.Provider to open layout browser");
   },
+  setLeftSidebarOpen: (): void => {
+    throw new Error("Must be in a WorkspaceContext.Provider to open the left sidebar");
+  },
+  setRightSidebarOpen: (): void => {
+    throw new Error("Must be in a WorkspaceContext.Provider to open the right sidebar");
+  },
 });
 WorkspaceContext.displayName = "WorkspaceContext";
 
-export function useWorkspace(): {
-  panelSettingsOpen: boolean;
-  openPanelSettings: () => void;
-  openHelp: () => void;
-  openAccountSettings: () => void;
-  openLayoutBrowser: () => void;
-} {
+export function useWorkspace(): WorkspaceContextType {
   return useContext(WorkspaceContext);
 }

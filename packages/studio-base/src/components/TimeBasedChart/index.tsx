@@ -36,7 +36,6 @@ import { RpcElement, RpcScales } from "@foxglove/studio-base/components/Chart/ty
 import KeyListener from "@foxglove/studio-base/components/KeyListener";
 import { useMessagePipeline } from "@foxglove/studio-base/components/MessagePipeline";
 import Stack from "@foxglove/studio-base/components/Stack";
-import TimeBasedChartLegend from "@foxglove/studio-base/components/TimeBasedChart/TimeBasedChartLegend";
 import {
   TimelineInteractionStateStore,
   useClearHoverValue,
@@ -72,16 +71,6 @@ const useStyles = makeStyles()((theme) => ({
     marginBottom: theme.spacing(4),
     marginRight: theme.spacing(1),
   },
-  legend: {
-    display: "flex",
-    width: "10%",
-    minWidth: 90,
-    overflowY: "auto",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "start",
-    padding: theme.spacing(4, 0, 1, 0),
-  },
   tooltip: {
     maxWidth: "none",
   },
@@ -99,10 +88,6 @@ const useStyles = makeStyles()((theme) => ({
 }));
 
 type ChartComponentProps = ComponentProps<typeof ChartComponent>;
-
-// Chartjs typings use _null_ to indicate _gaps_ in the dataset
-// eslint-disable-next-line no-restricted-syntax
-const ChartNull = null;
 
 const selectGlobalBounds = (store: TimelineInteractionStateStore) => store.globalBounds;
 const selectSetGlobalBounds = (store: TimelineInteractionStateStore) => store.setGlobalBounds;
@@ -122,10 +107,7 @@ export type Props = {
   xAxes?: ScaleOptions<"linear">;
   yAxes: ScaleOptions<"linear">;
   annotations?: AnnotationOptions[];
-  drawLegend?: boolean;
   isSynced?: boolean;
-  canToggleLines?: boolean;
-  toggleLine?: (datasetId: string | typeof undefined, lineToHide: string) => void;
   linesToHide?: {
     [key: string]: boolean;
   };
@@ -145,14 +127,12 @@ export type Props = {
 // component. Uses chart.js internally, with a zoom/pan plugin, and with our
 // standard tooltips.
 export default function TimeBasedChart(props: Props): JSX.Element {
+  const requestID = useRef<number>(0);
   const {
     datasetId,
     type,
     width,
     height,
-    drawLegend,
-    canToggleLines,
-    toggleLine,
     data,
     isSynced = false,
     tooltips,
@@ -179,6 +159,7 @@ export default function TimeBasedChart(props: Props): JSX.Element {
   );
 
   const resumeFrame = useRef<() => void | undefined>();
+  const requestedResumeFrame = useRef<() => void | undefined>();
 
   // when data changes, we pause and wait for onFinishRender to resume
   const onStartRender = useCallback(() => {
@@ -196,10 +177,14 @@ export default function TimeBasedChart(props: Props): JSX.Element {
   const onFinishRender = useCallback(() => {
     const current = resumeFrame.current;
     resumeFrame.current = undefined;
+    requestedResumeFrame.current = current;
 
     if (current) {
       // allow the chart offscreen canvas to render to screen before calling done
-      requestAnimationFrame(current);
+      requestID.current = requestAnimationFrame(() => {
+        current();
+        requestedResumeFrame.current = undefined;
+      });
     }
   }, []);
 
@@ -207,6 +192,8 @@ export default function TimeBasedChart(props: Props): JSX.Element {
     // cleanup paused frames on unmount or dataset changes
     return () => {
       onFinishRender();
+      cancelAnimationFrame(requestID.current);
+      requestedResumeFrame.current?.();
     };
   }, [pauseFrame, onFinishRender]);
 
@@ -429,7 +416,7 @@ export default function TimeBasedChart(props: Props): JSX.Element {
       },
       ...props.plugins,
       annotation: { annotations: props.annotations },
-    } as ChartOptions["plugins"];
+    };
   }, [props.annotations, props.plugins, props.zoom, zoomMode]);
 
   // To avoid making a new xScale identity on all updates that might change the min/max
@@ -611,17 +598,15 @@ export default function TimeBasedChart(props: Props): JSX.Element {
           dataset.showLine !== true
             ? downsampleScatter(dataset, bounds)
             : downsampleTimeseries(dataset, bounds);
-        // NaN item values are now allowed, instead we convert these to undefined entries
-        // which will create _gaps_ in the line
-        const nanToNulldata = downsampled.data.map((item) => {
+        // NaN item values create gaps in the line
+        const undefinedToNanData = downsampled.data.map((item) => {
           if (item == undefined || isNaN(item.x) || isNaN(item.y)) {
-            // Chartjs typings use _null_ to indicate a gap
-            return ChartNull;
+            return { x: NaN, y: NaN };
           }
           return item;
         });
 
-        return { ...downsampled, data: nanToNulldata };
+        return { ...downsampled, data: undefinedToNanData };
       });
     },
     [height, width],
@@ -866,17 +851,6 @@ export default function TimeBasedChart(props: Props): JSX.Element {
           </div>
         </Stack>
       </Tooltip>
-      {drawLegend === true && (
-        <div className={classes.legend}>
-          <TimeBasedChartLegend
-            datasetId={datasetId}
-            canToggleLines={canToggleLines}
-            datasets={data.datasets}
-            linesToHide={linesToHide}
-            toggleLine={toggleLine}
-          />
-        </div>
-      )}
     </Stack>
   );
 }

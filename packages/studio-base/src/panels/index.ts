@@ -26,7 +26,7 @@ import variableSliderThumbnail from "./VariableSlider/thumbnail.png";
 import diagnosticStatusThumbnail from "./diagnostics/thumbnails/diagnostic-status.png";
 import diagnosticSummaryThumbnail from "./diagnostics/thumbnails/diagnostic-summary.png";
 
-const builtin: PanelInfo[] = [
+export const builtin: PanelInfo[] = [
   {
     title: "3D",
     type: "3D",
@@ -41,6 +41,7 @@ const builtin: PanelInfo[] = [
     description: "Display ROS DiagnosticArray messages for a specific hardware_id.",
     thumbnail: diagnosticStatusThumbnail,
     module: async () => await import("./diagnostics/DiagnosticStatusPanel"),
+    hasCustomToolbar: true,
   },
   {
     title: `Diagnostics – Summary (ROS)`,
@@ -48,6 +49,7 @@ const builtin: PanelInfo[] = [
     description: "Display a summary of all ROS DiagnosticArray messages.",
     thumbnail: diagnosticSummaryThumbnail,
     module: async () => await import("./diagnostics/DiagnosticSummary"),
+    hasCustomToolbar: true,
   },
   {
     title: "Image",
@@ -111,6 +113,7 @@ const builtin: PanelInfo[] = [
     description: "Inspect topic messages.",
     thumbnail: rawMessagesThumbnail,
     module: async () => await import("./RawMessages"),
+    hasCustomToolbar: true,
   },
   {
     title: "Log",
@@ -118,6 +121,7 @@ const builtin: PanelInfo[] = [
     description: "Display logs by node and severity level.",
     thumbnail: logThumbnail,
     module: async () => await import("./Log"),
+    hasCustomToolbar: true,
   },
   {
     title: "State Transitions",
@@ -132,13 +136,7 @@ const builtin: PanelInfo[] = [
     description: "Display topic messages in a tabular format.",
     thumbnail: tableThumbnail,
     module: async () => await import("./Table"),
-  },
-  {
-    title: "URDF Viewer",
-    type: "URDFViewer",
-    description: "Visualize Unified Robot Description Format files.",
-    thumbnail: URDFViewerThumbnail,
-    module: async () => await import("./URDFViewer"),
+    hasCustomToolbar: true,
   },
   {
     title: "Topic Graph",
@@ -175,10 +173,11 @@ const builtin: PanelInfo[] = [
     description: "Group related panels into tabs.",
     thumbnail: tabThumbnail,
     module: async () => await import("./Tab"),
+    hasCustomToolbar: true,
   },
 ];
 
-const debug: PanelInfo[] = [
+export const debug: PanelInfo[] = [
   {
     title: "Studio - Playback Performance",
     type: "PlaybackPerformance",
@@ -187,12 +186,16 @@ const debug: PanelInfo[] = [
   },
 ];
 
-const legacyPlot: PanelInfo[] = [
-  {
-    title: "Legacy Plot",
-    type: "LegacyPlot",
-    module: async () => await import("./LegacyPlot"),
-  },
-];
+export const legacyPlot: PanelInfo = {
+  title: "Legacy Plot",
+  type: "LegacyPlot",
+  module: async () => await import("./LegacyPlot"),
+};
 
-export default { builtin, debug, legacyPlot };
+export const urdfViewer: PanelInfo = {
+  title: "URDF Viewer",
+  type: "URDFViewer",
+  description: "Visualize Unified Robot Description Format files.",
+  thumbnail: URDFViewerThumbnail,
+  module: async () => await import("./URDFViewer"),
+};
