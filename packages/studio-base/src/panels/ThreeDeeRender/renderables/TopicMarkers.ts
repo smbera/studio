@@ -13,6 +13,7 @@ import { updatePose } from "../updatePose";
 
 export type LayerSettingsMarker = BaseSettings & {
   color: string | undefined;
+  scale: [number, number, number];
   showOutlines: boolean | undefined;
   selectedIdVariable: string | undefined;
   namespaces: Record<string, LayerSettingsMarkerNamespace>;

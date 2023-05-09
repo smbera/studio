@@ -24,11 +24,15 @@ import {
 import { Marker, MarkerArray, MARKER_ARRAY_DATATYPES, MARKER_DATATYPES } from "../ros";
 import { topicIsConvertibleToSchema } from "../topicIsConvertibleToSchema";
 import { makePose } from "../transforms";
+import { PRECISION_DISTANCE } from "../settings";
+
+const DEFAULT_SCALE: THREE.Vector3Tuple = [0.01, 0, 0];
 
 const DEFAULT_SETTINGS: LayerSettingsMarker = {
   visible: false,
   showOutlines: true,
   color: undefined,
+  scale: DEFAULT_SCALE,
   selectedIdVariable: undefined,
   namespaces: {},
 };
@@ -62,6 +66,14 @@ export class Markers extends SceneExtension<TopicMarkers> {
         order: topic.name.toLocaleLowerCase(),
         fields: {
           color: { label: "Color", input: "rgba", value: config.color },
+          scale: {
+            label: "Scale",
+            input: "vec3",
+            labels: ["X", "Y", "Z"],
+            step: 0.1,
+            precision: PRECISION_DISTANCE,
+            value: config.scale ?? DEFAULT_SCALE,
+          },
           showOutlines: { label: "Show outline", input: "boolean", value: config.showOutlines },
           selectedIdVariable: {
             label: "Selection Variable",

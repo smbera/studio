@@ -118,14 +118,21 @@ export class RenderableMarker extends Renderable<MarkerUserData> {
       | Partial<LayerSettingsMarker>
       | undefined;
     const colorStr = settings?.color;
-
-    if (colorStr == undefined) {
-      return marker;
-    }
+    const scale = settings?.scale;
+    let newMarker = marker;
 
     // Create a clone of the marker with the color overridden
-    const color = stringToRgba(makeRgba(), colorStr);
-    const newMarker = { ...marker, color, colors: [] };
+    if (colorStr) {
+      const color = stringToRgba(makeRgba(), colorStr);
+      newMarker = { ...newMarker, color, colors: [] };
+    }
+
+    // Create a clone of the marker with the scale overridden
+    if (scale) {
+      const [x, y, z] = scale;
+      newMarker = { ...newMarker, scale: { x, y, z } };
+    }
+
     return newMarker;
   }
 }
