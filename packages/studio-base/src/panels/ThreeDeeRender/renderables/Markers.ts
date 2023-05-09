@@ -22,9 +22,9 @@ import {
   normalizeVector3s,
 } from "../normalizeMessages";
 import { Marker, MarkerArray, MARKER_ARRAY_DATATYPES, MARKER_DATATYPES } from "../ros";
+import { PRECISION_DISTANCE } from "../settings";
 import { topicIsConvertibleToSchema } from "../topicIsConvertibleToSchema";
 import { makePose } from "../transforms";
-import { PRECISION_DISTANCE } from "../settings";
 
 const DEFAULT_SCALE: THREE.Vector3Tuple = [0.01, 0, 0];
 
