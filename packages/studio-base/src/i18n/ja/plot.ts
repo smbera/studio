@@ -27,6 +27,7 @@ export const plot: Partial<TypeOptions["resources"]["plot"]> = {
   showValues: "値を表示する",
   yAxis: "Y軸",
   showLabels: "ラベルを表示する",
+  showLine: "線を表示",
   min: "最小",
   max: "最大",
   xAxis: "X軸",

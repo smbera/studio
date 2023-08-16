@@ -49,10 +49,10 @@ const makeSeriesNode = memoizeWeak(
           label: t("color"),
           value: path.color ?? lineColors[index % lineColors.length],
         },
-        showLine: {
+        enabled: {
           label: t("showLine"),
           input: "boolean",
-          value: path.showLine !== false,
+          value: path.enabled,
         },
         timestampMethod: {
           input: "select",

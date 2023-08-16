@@ -769,13 +769,11 @@ export const HiddenConnectingLines: StoryObj = {
             {
               value: "/some_topic/location.pose.velocity",
               enabled: true,
-              showLine: false,
               timestampMethod: "receiveTime",
             },
             {
               value: "/some_topic/location.pose.acceleration",
               enabled: true,
-              showLine: true,
               timestampMethod: "receiveTime",
             },
           ],

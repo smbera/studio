@@ -27,6 +27,7 @@ export const plot: Partial<TypeOptions["resources"]["plot"]> = {
   showValues: "显示值",
   yAxis: "Y 轴",
   showLabels: "显示标签",
+  showLine: "显示线条",
   min: "最小值",
   max: "最大值",
   xAxis: "X 轴",

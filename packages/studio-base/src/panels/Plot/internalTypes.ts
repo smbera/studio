@@ -27,7 +27,6 @@ export type PlotPath = BasePlotPath & {
   color?: string;
   label?: string;
   timestampMethod: TimestampMethod;
-  showLine?: boolean;
 };
 
 // X-axis values:
