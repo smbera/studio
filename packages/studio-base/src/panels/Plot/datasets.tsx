@@ -18,7 +18,12 @@ import {
   PlotPath,
   PlotXAxisVal,
 } from "./internalTypes";
-import { applyToDatum, MathFunction, mathFunctions } from "./transformPlotRange";
+import {
+  applyFunctionToDatum,
+  applyToDatum,
+  MathFunction,
+  mathFunctions,
+} from "./transformPlotRange";
 
 const isCustomScale = (xAxisVal: PlotXAxisVal): boolean =>
   xAxisVal === "custom" || xAxisVal === "currentCustom";
@@ -178,6 +183,8 @@ export function getDatasetsFromMessagePlotPath({
     for (const datum of datums) {
       if (maybeMathFn) {
         rangeData.push(applyToDatum(datum, maybeMathFn));
+      } else if (path.functionString) {
+        rangeData.push(applyFunctionToDatum(datum, path.functionString));
       } else {
         rangeData.push(datum);
       }

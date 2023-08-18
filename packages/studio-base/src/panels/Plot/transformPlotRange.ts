@@ -67,3 +67,27 @@ export function applyToDatum<T extends { y: number | string | bigint }>(
   }
   return { ...datum, y, value: y };
 }
+
+// JS sandbox to avoid memory leaks, such as `const code = "window.a = 1"`
+function geval(code: string, value: number): number {
+  // eslint-disable-next-line no-eval
+  return window.eval(
+    `(function(window, self, globalThis, value){with(window){${code}}}).bind({})({}, {}, {}, ${value});`,
+  );
+}
+
+export function applyFunctionToDatum<T extends { y: number | string | bigint }>(
+  datum: T,
+  functionString: string,
+): T {
+  let { y } = datum;
+  const numericYValue: number = Number(y);
+  // Only apply the function if the Y value is a valid number.
+  if (!isNaN(numericYValue)) {
+    try {
+      y = geval(functionString, numericYValue);
+      // eslint-disable-next-line no-empty
+    } catch {}
+  }
+  return { ...datum, y, value: y };
+}

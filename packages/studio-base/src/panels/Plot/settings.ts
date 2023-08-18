@@ -44,6 +44,13 @@ const makeSeriesNode = memoizeWeak(
           label: t("label"),
           value: path.label,
         },
+        functionString: {
+          input: "string",
+          label: "function(value)",
+          value: path.functionString,
+          multiline: true,
+          placeholder: "/* JavaScript */ \n return value * 2",
+        },
         color: {
           input: "rgb",
           label: t("color"),

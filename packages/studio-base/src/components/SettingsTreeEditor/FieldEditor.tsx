@@ -241,6 +241,7 @@ function FieldInput({
           placeholder={field.placeholder}
           InputProps={{
             readOnly: field.readonly,
+            multiline: field.multiline,
           }}
           onChange={(event) =>
             actionHandler({

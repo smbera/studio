@@ -26,6 +26,7 @@ export type BasePlotPath = {
 export type PlotPath = BasePlotPath & {
   color?: string;
   label?: string;
+  functionString?: string;
   timestampMethod: TimestampMethod;
   showLine?: boolean;
 };

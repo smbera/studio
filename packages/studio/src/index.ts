@@ -634,6 +634,11 @@ export type SettingsTreeField = SettingsTreeFieldValue & {
   readonly?: boolean;
 
   /**
+   * True if the field is multiline.
+   */
+  multiline?: boolean;
+
+  /**
    * Optional message indicating any error state for the field.
    */
   error?: string;
