@@ -11,7 +11,12 @@
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
 
-import { derivative, applyToDatum, mathFunctions } from "./transformPlotRange";
+import {
+  derivative,
+  applyToDatum,
+  mathFunctions,
+  applyFunctionToDatum,
+} from "./transformPlotRange";
 
 describe("transformPlotRange", () => {
   describe("derivative", () => {
@@ -101,6 +106,13 @@ describe("transformPlotRange", () => {
     expect(applyToDatum({ y: 180 }, mathFunctions.deg2rad!)).toEqual({
       y: Math.PI,
       value: Math.PI,
+    });
+  });
+
+  it("custom function editor", () => {
+    expect(applyFunctionToDatum({ y: 100 }, "return value * 2")).toEqual({
+      y: 200,
+      value: 200,
     });
   });
 });
