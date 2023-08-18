@@ -72,10 +72,10 @@ export function applyToDatum<T extends { y: number | string | bigint }>(
 // For example, when code is "window.a = 1"
 // For example, when code is "var a = 1"
 // For example, when code is "a = 1"
-function geval(code: string, value: number): number {
+function sandbox(code: string, value: number): number {
   // eslint-disable-next-line no-eval
   return window.eval(
-    `(function(window, self, globalThis, value){"use strict";with(window){${code}}}).bind({})({}, {}, {}, ${value});`,
+    `(function(window, self, globalThis, value){"use strict";${code}}).bind({})({}, {}, {}, ${value});`,
   );
 }
 
@@ -88,7 +88,7 @@ export function applyFunctionToDatum<T extends { y: number | string | bigint }>(
   // Only apply the function if the Y value is a valid number.
   if (!isNaN(numericYValue)) {
     try {
-      y = geval(functionString, numericYValue);
+      y = sandbox(functionString, numericYValue);
       // eslint-disable-next-line no-empty
     } catch {}
   }
