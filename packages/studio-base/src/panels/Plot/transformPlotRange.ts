@@ -68,11 +68,14 @@ export function applyToDatum<T extends { y: number | string | bigint }>(
   return { ...datum, y, value: y };
 }
 
-// JS sandbox to avoid memory leaks, such as `const code = "window.a = 1"`
+// JS sandbox to avoid memory leaks and variable escapes
+// For example, when code is "window.a = 1"
+// For example, when code is "var a = 1"
+// For example, when code is "a = 1"
 function geval(code: string, value: number): number {
   // eslint-disable-next-line no-eval
   return window.eval(
-    `(function(window, self, globalThis, value){with(window){${code}}}).bind({})({}, {}, {}, ${value});`,
+    `(function(window, self, globalThis, value){"use strict";with(window){${code}}}).bind({})({}, {}, {}, ${value});`,
   );
 }
 
