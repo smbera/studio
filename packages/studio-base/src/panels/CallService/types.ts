@@ -5,6 +5,7 @@
 export type Config = {
   serviceName?: string;
   requestPayload?: string;
+  requestTimeout: number;
   layout?: "vertical" | "horizontal";
   buttonText?: string;
   buttonTooltip?: string;

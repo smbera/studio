@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from "uuid";
 import { debouncePromise } from "@foxglove/den/async";
 import Log from "@foxglove/log";
 import { parseChannel, ParsedChannel } from "@foxglove/mcap-support";
-import { MessageDefinition, isMsgDefEqual } from "@foxglove/message-definition";
+import { MessageDefinition, isMsgDefEqual, MessageDefinitionField } from "@foxglove/message-definition";
 import CommonRosTypes from "@foxglove/rosmsg-msgs-common";
 import { MessageWriter as Ros1MessageWriter } from "@foxglove/rosmsg-serialization";
 import { MessageWriter as Ros2MessageWriter } from "@foxglove/rosmsg2-serialization";
@@ -19,6 +19,8 @@ import { Asset } from "@foxglove/studio-base/components/PanelExtensionAdapter";
 import PlayerProblemManager from "@foxglove/studio-base/players/PlayerProblemManager";
 import {
   AdvertiseOptions,
+  ComposedDefinitions,
+  ComposedDefinitionsValue,
   MessageEvent,
   Player,
   PlayerCapabilities,
@@ -27,6 +29,7 @@ import {
   PlayerProblem,
   PlayerState,
   PublishPayload,
+  ServiceNameSchema,
   SubscribePayload,
   Topic,
   TopicStats,
@@ -93,6 +96,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
   #topics?: Topic[]; // Topics as published by the WebSocket.
   #topicsStats = new Map<string, TopicStats>(); // Topic names to topic statistics.
   #datatypes: MessageDefinitionMap = new Map(); // Datatypes as published by the WebSocket.
+  #serviceNameSchema: ServiceNameSchema = new Map();
   #parsedMessages: MessageEvent[] = []; // Queue of messages that we'll send in next _emitState() call.
   #receivedBytes: number = 0;
   #metricsCollector: PlayerMetricsCollectorInterface;
@@ -650,7 +654,48 @@ export default class FoxgloveWebSocketPlayer implements Player {
           requestMessageWriter,
         };
         this.#servicesByName.set(service.name, resolvedService);
+
+        const parsedRequestDefinitions = parsedRequest.datatypes.get(requestType)?.definitions;
+        if (parsedRequestDefinitions) {
+          this.#serviceNameSchema.set(service.name, {
+            requestSchema: service.requestSchema,
+            requestDefinitions: parsedRequestDefinitions,
+            requestComposedDefinitions: {},
+            responseSchema: service.responseSchema,
+          });
+        }
       }
+
+      const composeDefinitions = (definitions: MessageDefinitionField[]): ComposedDefinitions => {
+        const composeDefinition = (definition: MessageDefinitionField): ComposedDefinitions => {
+          const { type, name, isComplex, isArray, arrayLength, isConstant, value } = definition;
+          const target = this.#datatypes.get(type);
+
+          let newValue: ComposedDefinitionsValue = isConstant === true ? value : type;
+
+          if (isComplex === true && target) {
+            newValue = composeDefinitions(target.definitions);
+          }
+
+          if (isArray === true) {
+            newValue = new Array(arrayLength ?? 1).fill(newValue) as Array<ComposedDefinitions>;
+          }
+
+          return { [name]: newValue };
+        };
+
+        return definitions.reduce((pre, cur) => ({ ...pre, ...composeDefinition(cur) }), {});
+      };
+
+      for (const [serviceName, value] of this.#serviceNameSchema) {
+        const { requestDefinitions } = value;
+        const requestComposedDefinitions = composeDefinitions(requestDefinitions);
+        this.#serviceNameSchema.set(serviceName, {
+          ...value,
+          requestComposedDefinitions,
+        });
+      }
+
       this.#emitState();
     });
 
@@ -799,6 +844,7 @@ export default class FoxgloveWebSocketPlayer implements Player {
         topics: this.#topics,
         topicStats: this.#topicsStats,
         datatypes: this.#datatypes,
+        serviceNameSchema: this.#serviceNameSchema,
         parameters: this.#parameters,
         publishedTopics: this.#publishedTopics,
         subscribedTopics: this.#subscribedTopics,

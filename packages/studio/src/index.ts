@@ -282,6 +282,11 @@ export type PanelExtensionContext = {
    */
   readonly initialState: unknown;
 
+  /**
+     * Initial player state
+     */
+  readonly playerState: unknown;
+
   /** Actions the panel may perform related to the user's current layout. */
   readonly layout: LayoutActions;
 

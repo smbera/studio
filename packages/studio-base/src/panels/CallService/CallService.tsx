@@ -2,14 +2,23 @@
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
-import { Button, Palette, TextField, Tooltip, Typography, inputBaseClasses } from "@mui/material";
+import HelpIcon from "@mui/icons-material/Help";
+import SearchIcon from "@mui/icons-material/Search";
+import { Button, Palette, TextField, Tooltip, Typography, inputBaseClasses,
+  FormControl,
+  Select,
+  ListSubheader,
+  InputAdornment,
+  MenuItem, } from "@mui/material";
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 
+import { promiseTimeout } from "@foxglove/den/async"
 import Log from "@foxglove/log";
 import { PanelExtensionContext, SettingsTreeAction } from "@foxglove/studio";
 import Stack from "@foxglove/studio-base/components/Stack";
 import { Config } from "@foxglove/studio-base/panels/CallService/types";
+import { PlayerState, ServiceNameSchema } from "@foxglove/studio-base/players/types";
 import ThemeProvider from "@foxglove/studio-base/theme/ThemeProvider";
 import { fonts } from "@foxglove/studio-base/util/sharedStyleConstants";
 
@@ -85,6 +94,16 @@ function parseInput(value: string): { error?: string; parsedObject?: unknown } {
   return { error, parsedObject };
 }
 
+const containsText = (text: string, searchText: string) =>
+  text.toLowerCase().includes(searchText.toLowerCase());
+
+const formatTitle = (requestSchema: string, responseSchema: string) => (
+  <pre style={{ maxHeight: 500, overflow: "auto" }}>
+    {`\n------------requestSchema------------\n${requestSchema}`}
+    {`\n------------responseSchema------------\n${responseSchema}`}
+  </pre>
+);
+
 // Wrapper component with ThemeProvider so useStyles in the panel receives the right theme.
 export function CallService({ context }: Props): JSX.Element {
   const [colorScheme, setColorScheme] = useState<Palette["mode"]>("light");
@@ -110,6 +129,42 @@ function CallServiceContent(
     ...(context.initialState as Partial<Config>),
   }));
   const { classes } = useStyles({ buttonColor: config.buttonColor });
+
+  const [searchText, setSearchText] = useState("");
+
+  const serviceNameSchema: ServiceNameSchema = useMemo(() => {
+    return (context.playerState as PlayerState).activeData?.serviceNameSchema ?? new Map();
+  }, [context.playerState]);
+
+  const displayedOptions = useMemo(() => {
+    const options: Array<{ serviceName: string; title: JSX.Element }> = [];
+
+    serviceNameSchema.forEach(({ requestSchema, responseSchema }, serviceName) => {
+      if (
+        containsText(requestSchema, searchText) ||
+        containsText(responseSchema, searchText) ||
+        containsText(serviceName, searchText)
+      ) {
+        options.push({
+          serviceName,
+          title: formatTitle(requestSchema, responseSchema),
+        });
+      }
+    });
+
+    return options;
+  }, [searchText, serviceNameSchema]);
+
+  const selectTitle = useMemo(() => {
+    const { serviceName } = config;
+    const target = serviceNameSchema.get(serviceName ?? "");
+    if (target) {
+      const { requestSchema, responseSchema } = target;
+      return formatTitle(requestSchema, responseSchema);
+    }
+
+    return <></>;
+  }, [config, serviceNameSchema]);
 
   useEffect(() => {
     context.saveState(config);
@@ -156,7 +211,7 @@ function CallServiceContent(
       return "Connect to a data source that supports calling services";
     }
     if (!config.serviceName) {
-      return "Configure a service in the panel settings";
+      return "Select the service in the drop-down box";
     }
     return undefined;
   }, [context, config.serviceName]);
@@ -177,16 +232,13 @@ function CallServiceContent(
 
     try {
       setState({ status: "requesting", value: `Calling ${config.serviceName}...` });
-      const response = await context.callService(
-        config.serviceName!,
-        JSON.parse(config.requestPayload!),
-      );
+      const response = await promiseTimeout(context.callService(config.serviceName!, JSON.parse(config.requestPayload!)),config.requestTimeout * 1000)
       setState({ status: "success", value: JSON.stringify(response, undefined, 2) ?? "" });
     } catch (err) {
       setState({ status: "error", value: (err as Error).message });
       log.error(err);
     }
-  }, [context, config.serviceName, config.requestPayload]);
+  }, [context, config.serviceName, config.requestPayload, config.requestTimeout]);
 
   // Indicate render is complete - the effect runs after the dom is updated
   useEffect(() => {
@@ -195,6 +247,69 @@ function CallServiceContent(
 
   return (
     <Stack flex="auto" gap={1} padding={1.5} position="relative" fullHeight>
+      <Stack>
+        <FormControl fullWidth>
+          <Typography variant="caption" noWrap>
+            Service name
+          </Typography>
+          <Select
+            // Disables auto focus on MenuItems and allows TextField to be in focus
+            MenuProps={{ autoFocus: false }}
+            value={config.serviceName}
+            variant="outlined"
+            size="small"
+            onChange={(event) => {
+              const serviceName = event.target.value;
+              const target = serviceNameSchema.get(serviceName);
+              if (target) {
+                const { requestComposedDefinitions } = target;
+                const requestPayload = JSON.stringify(requestComposedDefinitions, undefined, 2);
+                setConfig({ ...config, serviceName, requestPayload });
+                return;
+              }
+              setConfig({ ...config, serviceName });
+            }}
+            onClose={() => { setSearchText(""); }}
+            startAdornment={
+              <InputAdornment position="start">
+                <Tooltip title={selectTitle}>
+                  <HelpIcon />
+                </Tooltip>
+              </InputAdornment>
+            }
+          >
+            <ListSubheader>
+              <TextField
+                size="small"
+                autoFocus
+                placeholder="Type to search..."
+                fullWidth
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+                onChange={(e) => { setSearchText(e.target.value); }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape") {
+                    // Prevents autoselecting item while typing (default Select behaviour)
+                    e.stopPropagation();
+                  }
+                }}
+              />
+            </ListSubheader>
+            {displayedOptions.map(({ serviceName, title }) => (
+              <MenuItem value={serviceName} key={serviceName}>
+                <Tooltip title={title} placement="bottom-start">
+                  <span>{serviceName}</span>
+                </Tooltip>
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Stack>
       <Stack gap={1} flexGrow="1" direction={config.layout === "horizontal" ? "row" : "column"}>
         <Stack flexGrow="1">
           <Typography variant="caption" noWrap>

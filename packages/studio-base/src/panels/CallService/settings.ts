@@ -13,15 +13,9 @@ import { Config } from "./types";
 
 export const defaultConfig: Config = {
   requestPayload: "{}",
+  requestTimeout: 5,
   layout: "vertical",
 };
-
-function serviceError(serviceName?: string) {
-  if (!serviceName) {
-    return "Service cannot be empty";
-  }
-  return undefined;
-}
 
 export function settingsActionReducer(prevConfig: Config, action: SettingsTreeAction): Config {
   return produce(prevConfig, (draft) => {
@@ -36,12 +30,15 @@ export function useSettingsTree(config: Config): SettingsTreeNodes {
   const settings = useMemo(
     (): SettingsTreeNodes => ({
       general: {
+        label: "General",
         fields: {
-          serviceName: {
-            label: "Service name",
-            input: "string",
-            error: serviceError(config.serviceName),
-            value: config.serviceName ?? "",
+          requestTimeout: {
+            label: "Request Timeout(Second)",
+            input: "number",
+            precision: 0,
+            min: 5,
+            step: 1,
+            value: config.requestTimeout,
           },
           layout: {
             label: "Layout",

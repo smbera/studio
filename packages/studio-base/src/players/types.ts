@@ -11,7 +11,7 @@
 //   found at http://www.apache.org/licenses/LICENSE-2.0
 //   You may not use this file except in compliance with the License.
 
-import { MessageDefinition } from "@foxglove/message-definition";
+import { ConstantValue, MessageDefinition, MessageDefinitionField } from "@foxglove/message-definition";
 import { Time } from "@foxglove/rostime";
 import type { MessageEvent, ParameterValue } from "@foxglove/studio";
 import { Immutable } from "@foxglove/studio";
@@ -33,6 +33,23 @@ export type ParsedMessageDefinitionsByTopic = {
 };
 
 export type TopicSelection = Map<string, SubscribePayload>;
+
+export type ComposedDefinitionsValue =
+  | ConstantValue
+  | ComposedDefinitions
+  | Array<ComposedDefinitions>;
+export type ComposedDefinitions = {
+  [key: string]: ComposedDefinitionsValue;
+};
+export type ServiceNameSchema = Map<
+  string,
+  {
+    requestSchema: string;
+    requestDefinitions: MessageDefinitionField[];
+    requestComposedDefinitions: ComposedDefinitions;
+    responseSchema: string;
+  }
+>;
 
 // A `Player` is a class that manages playback state. It manages subscriptions,
 // current time, which topics and datatypes are available, and so on.
@@ -187,6 +204,8 @@ export type PlayerStateActiveData = {
   // topic must refer to a datatype that is present in this list, every datatypes that refers to
   // another datatype must refer to a datatype that is present in this list).
   datatypes: RosDatatypes;
+
+  serviceNameSchema?: ServiceNameSchema;
 
   // A map of topic names to the set of publisher IDs publishing each topic.
   publishedTopics?: Map<string, Set<string>>;

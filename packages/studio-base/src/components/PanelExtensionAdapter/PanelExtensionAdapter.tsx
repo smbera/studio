@@ -58,9 +58,10 @@ import { useSharedPanelState } from "./useSharedPanelState";
 
 const log = Logger.getLogger(__filename);
 
+export const VERSION_CONFIG_KEY = "foxgloveConfigVersion";
+
 type VersionedPanelConfig = Record<string, unknown> & { [VERSION_CONFIG_KEY]: number };
 
-export const VERSION_CONFIG_KEY = "foxgloveConfigVersion";
 
 function isVersionedPanelConfig(config: unknown): config is VersionedPanelConfig {
   return (
@@ -117,6 +118,8 @@ function PanelExtensionAdapter(
 
   const { playerState, pauseFrame, setSubscriptions, seekPlayback, sortedTopics } =
     messagePipelineContext;
+
+  const initialPlayerState = useLatest(playerState);
 
   const { capabilities, profile: dataSourceProfile } = playerState;
 
@@ -311,6 +314,8 @@ function PanelExtensionAdapter(
 
     return {
       initialState: initialState.current,
+
+      playerState: initialPlayerState.current,
 
       saveState: (state) => {
         if (!isMounted()) {
@@ -519,6 +524,7 @@ function PanelExtensionAdapter(
     dataSourceProfile,
     getMessagePipelineContext,
     initialState,
+    initialPlayerState,
     isMounted,
     openSiblingPanel,
     panelId,
