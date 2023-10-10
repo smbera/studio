@@ -76,10 +76,10 @@ export function PanelListItem(props: Props): JSX.Element {
     },
     options: { dropEffect: "copy" },
     end: (_item, monitor) => {
-      const dropResult = monitor.getDropResult() ?? {};
+      const dropResult = monitor.getDropResult();
 
       // do nothing when the user wants to cancel a dragged panel
-      if (_.isEmpty(dropResult)) {
+      if (dropResult == undefined) {
         return;
       }
 
