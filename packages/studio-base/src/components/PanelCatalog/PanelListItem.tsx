@@ -4,7 +4,6 @@
 
 import { ReOrderDotsVertical16Filled } from "@fluentui/react-icons";
 import { Fade, ListItem, ListItemButton, ListItemText, Tooltip, Typography } from "@mui/material";
-import * as _ from "lodash-es";
 import { useCallback, useEffect, useRef } from "react";
 import { useDrag } from "react-dnd";
 import { MosaicDragType, MosaicPath } from "react-mosaic-component";
