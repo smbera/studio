@@ -65,6 +65,7 @@
     "@types/geojson": "7946.0.11",
     "@types/gl-matrix": "3.2.0",
     "@types/hammerjs": "2.0.42",
+    "@types/json-bigint": "^1",
     "@types/leaflet": "1.9.6",
     "@types/memoize-weak": "workspace:*",
     "@types/moment-duration-format": "2.2.3",
@@ -180,5 +181,8 @@
     "uuid": "9.0.1",
     "webpack": "5.88.2",
     "zustand": "4.4.1"
+  },
+  "dependencies": {
+    "json-bigint": "1.0.0"
   }
 }

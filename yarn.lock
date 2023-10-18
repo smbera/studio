@@ -2708,6 +2708,7 @@ __metadata:
     "@types/geojson": 7946.0.11
     "@types/gl-matrix": 3.2.0
     "@types/hammerjs": 2.0.42
+    "@types/json-bigint": ^1
     "@types/leaflet": 1.9.6
     "@types/memoize-weak": "workspace:*"
     "@types/moment-duration-format": 2.2.3
@@ -2762,6 +2763,7 @@ __metadata:
     intervals-fn: 3.0.3
     jest-canvas-mock: 2.5.2
     jest-diff: 29.7.0
+    json-bigint: 1.0.0
     jszip: 3.10.1
     leaflet: 1.9.4
     leaflet-ellipse: 0.9.1
@@ -6447,6 +6449,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/json-bigint@npm:^1":
+  version: 1.0.3
+  resolution: "@types/json-bigint@npm:1.0.3"
+  checksum: 085ab4961a3dd610d63f9e0e11d7e179899ad2557a7dc603fc840c96f6dd652dbb52c08ad05c8e6bff0253b02180d3a4fab02ddb3d5e4afdec7db065bc459a9d
+  languageName: node
+  linkType: hard
+
 "@types/json-schema@npm:*, @types/json-schema@npm:^7.0.12, @types/json-schema@npm:^7.0.8, @types/json-schema@npm:^7.0.9":
   version: 7.0.12
   resolution: "@types/json-schema@npm:7.0.12"
@@ -8489,6 +8498,13 @@ __metadata:
   version: 5.2.2
   resolution: "big.js@npm:5.2.2"
   checksum: b89b6e8419b097a8fb4ed2399a1931a68c612bce3cfd5ca8c214b2d017531191070f990598de2fc6f3f993d91c0f08aa82697717f6b3b8732c9731866d233c9e
+  languageName: node
+  linkType: hard
+
+"bignumber.js@npm:^9.0.0":
+  version: 9.1.2
+  resolution: "bignumber.js@npm:9.1.2"
+  checksum: 582c03af77ec9cb0ebd682a373ee6c66475db94a4325f92299621d544aa4bd45cb45fd60001610e94aef8ae98a0905fa538241d9638d4422d57abbeeac6fadaf
   languageName: node
   linkType: hard
 
@@ -15094,6 +15110,15 @@ __metadata:
   bin:
     jsesc: bin/jsesc
   checksum: b8b44cbfc92f198ad972fba706ee6a1dfa7485321ee8c0b25f5cedd538dcb20cde3197de16a7265430fce8277a12db066219369e3d51055038946039f6e20e17
+  languageName: node
+  linkType: hard
+
+"json-bigint@npm:1.0.0":
+  version: 1.0.0
+  resolution: "json-bigint@npm:1.0.0"
+  dependencies:
+    bignumber.js: ^9.0.0
+  checksum: c67bb93ccb3c291e60eb4b62931403e378906aab113ec1c2a8dd0f9a7f065ad6fd9713d627b732abefae2e244ac9ce1721c7a3142b2979532f12b258634ce6f6
   languageName: node
   linkType: hard
 

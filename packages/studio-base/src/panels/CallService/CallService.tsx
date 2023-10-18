@@ -3,6 +3,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
 import { Button, Palette, TextField, Tooltip, Typography, inputBaseClasses } from "@mui/material";
+import JSONbig from "json-bigint";
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import { makeStyles } from "tss-react/mui";
 
@@ -15,6 +16,7 @@ import ThemeProvider from "@foxglove/studio-base/theme/ThemeProvider";
 import { defaultConfig, settingsActionReducer, useSettingsTree } from "./settings";
 
 const log = Log.getLogger(__dirname);
+const JSONbigNative = JSONbig({ useNativeBigInt: true });
 
 type Props = {
   context: PanelExtensionContext;
@@ -68,7 +70,7 @@ function parseInput(value: string): { error?: string; parsedObject?: unknown } {
   let parsedObject;
   let error = undefined;
   try {
-    const parsedAny: unknown = JSON.parse(value);
+    const parsedAny: unknown = JSONbigNative.parse(value);
     if (Array.isArray(parsedAny)) {
       error = "Request content must be an object, not an array";
     } else if (parsedAny == undefined) {
@@ -178,9 +180,9 @@ function CallServiceContent(
       setState({ status: "requesting", value: `Calling ${config.serviceName}...` });
       const response = await context.callService(
         config.serviceName!,
-        JSON.parse(config.requestPayload!),
+        JSONbigNative.parse(config.requestPayload!),
       );
-      setState({ status: "success", value: JSON.stringify(response, undefined, 2) ?? "" });
+      setState({ status: "success", value: JSONbigNative.stringify(response, undefined, 2) ?? "" });
     } catch (err) {
       setState({ status: "error", value: (err as Error).message });
       log.error(err);
