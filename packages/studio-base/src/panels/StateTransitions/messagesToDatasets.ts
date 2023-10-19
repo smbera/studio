@@ -2,6 +2,7 @@
 // License, v2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/
 
+import * as _ from "lodash-es";
 import stringHash from "string-hash";
 
 import { Time, subtract as subtractTimes, toSec } from "@foxglove/rostime";
@@ -47,16 +48,30 @@ type Args = {
 export default function messagesToDatasets(args: Args): ChartDatasets {
   const { path, startTime, y, blocks } = args;
 
+  const isTopic = blocks.some(
+    (messages) => messages?.some((itemByPath) => _.isObject(itemByPath.queriedData[0]?.value)),
+  );
+
+  const datasetProps = isTopic
+    ? {
+        pointBorderColor: "rgba(95, 202, 252, 1)",
+        pointStyle: "dash",
+        showLine: false,
+      }
+    : {
+        pointBackgroundColor: "rgba(0, 0, 0, 0.4)",
+        pointBorderColor: "transparent",
+        pointHoverRadius: 3,
+        pointRadius: 1.25,
+        pointStyle: "circle",
+        showLine: true,
+      };
+
   const dataset: ChartDataset = {
     borderWidth: 10,
     data: [],
     label: path.label ? path.label : path.value,
-    pointBackgroundColor: "rgba(0, 0, 0, 0.4)",
-    pointBorderColor: "transparent",
-    pointHoverRadius: 3,
-    pointRadius: 1.25,
-    pointStyle: "circle",
-    showLine: true,
+    ...datasetProps,
   };
 
   let previousTimestamp: Time | undefined;
@@ -80,7 +95,11 @@ export default function messagesToDatasets(args: Args): ChartDatasets {
         continue;
       }
 
-      const { constantName, value } = queriedData;
+      const { constantName } = queriedData;
+      let { value } = queriedData;
+      if (isTopic) {
+        value = "";
+      }
 
       const datasetIndex = indexer(value);
 

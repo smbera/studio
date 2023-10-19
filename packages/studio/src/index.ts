@@ -586,6 +586,8 @@ export type SettingsTreeFieldValue =
       validTypes?: string[];
       /** True if the input should allow math modifiers like @abs. */
       supportsMathModifiers?: boolean;
+      /** True if the input should allow display the distribution of topic over the entire period of time */
+      supportsDisplayTopic?: boolean;
     }
   | {
       input: "number";

@@ -182,6 +182,7 @@ type MessagePathInputBaseProps = {
   readOnly?: boolean;
   prioritizedDatatype?: string;
   variant?: TextFieldProps["variant"];
+  supportsDisplayTopic?: boolean; // Display the distribution of topic over the entire period of time
 };
 
 const useStyles = makeStyles()({
@@ -205,6 +206,7 @@ export default React.memo<MessagePathInputBaseProps>(function MessagePathInput(
     inputStyle,
     disableAutocomplete = false,
     variant = "standard",
+    supportsDisplayTopic = false,
   } = props;
   const { classes } = useStyles();
   const topicFields = useMemo(() => getFieldPaths(topics, datatypes), [datatypes, topics]);
@@ -247,7 +249,10 @@ export default React.memo<MessagePathInputBaseProps>(function MessagePathInput(
       // add a "." so the user can keep typing to autocomplete the message path.
       const messageIsValidType = validTypes == undefined || validTypes.includes("message");
       const keepGoingAfterTopicName =
-        autocompleteType === "topicName" && !messageIsValidType && !isSimpleField;
+        autocompleteType === "topicName" &&
+        !messageIsValidType &&
+        !isSimpleField &&
+        !supportsDisplayTopic;
       const value = keepGoingAfterTopicName ? rawValue + "." : rawValue;
 
       onChangeProp(completeStart + value + completeEnd, props.index);
@@ -265,7 +270,7 @@ export default React.memo<MessagePathInputBaseProps>(function MessagePathInput(
         autocomplete.blur();
       }
     },
-    [onChangeProp, path, props.index, topicFields, validTypes],
+    [supportsDisplayTopic, onChangeProp, path, props.index, topicFields, validTypes],
   );
 
   const rosPath = useMemo(() => parseRosPath(path), [path]);
@@ -482,7 +487,10 @@ export default React.memo<MessagePathInputBaseProps>(function MessagePathInput(
 
   const hasError =
     usesUnsupportedMathModifier ||
-    (autocompleteType != undefined && !disableAutocomplete && path.length > 0);
+    (autocompleteType != undefined &&
+      !disableAutocomplete &&
+      path.length > 0 &&
+      !supportsDisplayTopic);
 
   return (
     <Autocomplete

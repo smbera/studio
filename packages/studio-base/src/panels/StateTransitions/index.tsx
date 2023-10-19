@@ -191,10 +191,7 @@ const StateTransitions = React.memo(function StateTransitions(props: Props) {
 
   useEffect(() => {
     setMessagePathDropConfig({
-      getDropStatus(draggedPaths) {
-        if (draggedPaths.some((path) => !path.isLeaf)) {
-          return { canDrop: false };
-        }
+      getDropStatus() {
         return { canDrop: true, effect: "add" };
       },
       handleDrop(draggedPaths) {

@@ -295,6 +295,7 @@ function FieldInput({
             });
           }}
           validTypes={field.validTypes}
+          supportsDisplayTopic={field.supportsDisplayTopic}
         />
       );
     case "select": {
